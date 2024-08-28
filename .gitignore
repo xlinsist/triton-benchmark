@@ -1,0 +1,29 @@
+# Triton builds
+aux/
+*bin/
+lib/
+obj/
+*.xls
+*.txt
+
+# Environments
+.venv
+venv/
+venv.bak/
+
+# VS Code project files
+.vscode
+.vs
+
+
+# Vim
+*.swp
+
+*.llir
+*.asm
+*.s
+*jpg
+*jpeg
+
+.triton
+sysroot
