@@ -15,15 +15,15 @@ sed -i "s/MODE=\(\".*\"\)/MODE=\"${MODE}\"/g" ${DIR}/report.sh
 ARCH=rv64gcv_zvl256b
 ABI=lp64d
 
-GCC="riscv64-unknown-linux-gnu-g++ -march=${ARCH} -mabi=${ABI} -O3"
-ZCC="z++ -fno-lto --target=riscv64-unknown-linux-gnu -march=${ARCH} -mabi=${ABI} -O3"
-AR="llvm-ar"
+GCC="/home/zhouxulin/intern/buddy-mlir/thirdparty/riscv-gnu-toolchain/install/bin/riscv64-unknown-linux-gnu-g++ -march=${ARCH} -mabi=${ABI} -O3"
+ZCC="/home/zhouxulin/intern/zcc-lite-u22/bin/z++ -fno-lto --target=riscv64-unknown-linux-gnu -march=${ARCH} -mabi=${ABI} -O3"
+AR="/home/zhouxulin/intern/llvm-project/build/bin/llvm-ar"
 # OBJDUMP="llvm-objdump"
 
 # Python virtual environment for triton kernel compilation
 PYC="python"
-TRITON_PLUGIN_DIRS=~/workspace/AI-Kernel-Library/triton-cpu/
-TRITON_PYTHON_VENV=${TRITON_PLUGIN_DIRS}/.venv
+TRITON_PLUGIN_DIRS=/home/zhouxulin/intern/AI-Benchmark/triton-cpu/
+# TRITON_PYTHON_VENV=${TRITON_PLUGIN_DIRS}/.venv
 # triton-cpu kernel launcher
 KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 
@@ -72,6 +72,7 @@ END
 build_support_lib() {
   ${COMPILER} -fPIC -I ${DIR}/include -c ${SRC_DIR}/support/*.cpp -o ${OBJ_DIR}/support.o
   ${AR} rcs ${LIB_DIR}/libsupport.a ${OBJ_DIR}/support.o
+  cp  /home/zhouxulin/intern/AI-Benchmark/sysroot/lib/* ${LIB_DIR}
 }
 
 # build c kernel
@@ -87,7 +88,7 @@ build_c_kernel_lib() {
 
 # build triton kernel
 build_triton_kernel_lib() {
-  source ${TRITON_PYTHON_VENV}/bin/activate
+  # source ${TRITON_PYTHON_VENV}/bin/activate
 
   for kernel in ${TRITON_KERNELS[@]}; do
     name=`basename ${kernel} .py`

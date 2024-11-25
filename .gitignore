@@ -23,3 +23,5 @@ venv.bak/
 *.s
 *jpg
 *jpeg
+
+.triton

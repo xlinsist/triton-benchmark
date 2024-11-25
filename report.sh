@@ -11,8 +11,10 @@ MODE="Accuracy"
 ARCH=rv64gcv
 ABI=lp64d
 
-GCC="riscv64-unknown-linux-gnu-g++ -march=${ARCH} -mabi=${ABI} -O3 -fopenmp -fPIC"
-ZCC="z++ -fno-lto --target=riscv64-unknown-linux-gnu -march=${ARCH} -mabi=${ABI} -O3 -fopenmp -fPIC"
+# GCC="riscv64-unknown-linux-gnu-g++ -march=${ARCH} -mabi=${ABI} -O3 -fopenmp -fPIC"
+# ZCC="z++ -fno-lto --target=riscv64-unknown-linux-gnu -march=${ARCH} -mabi=${ABI} -O3 -fopenmp -fPIC"
+GCC="/home/zhouxulin/intern/buddy-mlir/thirdparty/riscv-gnu-toolchain/install/bin/riscv64-unknown-linux-gnu-g++ -march=${ARCH} -mabi=${ABI} -O3"
+ZCC="/home/zhouxulin/intern/zcc-lite-u22/bin/z++ -fno-lto --target=riscv64-unknown-linux-gnu -march=${ARCH} -mabi=${ABI} -O3"
 
 
 # | #####  softmax_kernel kernel performance ##### |

@@ -2,7 +2,7 @@
 
 DIR=`dirname $0`
 
-REMOTE=tptuser@192.168.2.68:/home/tptuser/Workspace/crux/
+REMOTE=zhouxulin@192.168.15.167:/home/zhouxulin/ai-benchmark/
 
 BUILD_DIR=${DIR}/build/
 

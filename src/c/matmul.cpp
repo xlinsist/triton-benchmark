@@ -24,7 +24,7 @@ void matmul(float *arg0, float *arg1, float *arg2, int M, int N, int K) {
     }
   }
 
-#pragma omp parallel for collapse(2) schedule(static)                          \
+#pragma omp parallel for collapse(1) schedule(static)                          \
     num_threads(max_threads.value())
   for (int i = 0; i < M; i += BLOCK_SIZE_M) {
     int i_end = std::min(M, i + BLOCK_SIZE_M);

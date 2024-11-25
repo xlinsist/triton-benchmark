@@ -12,7 +12,7 @@ import numpy as np
 datasets = [
     {
         'name': 'warp',
-        'report_file': '/home/crux/workspace/AI-Kernel-Library/Benchmark/build/report.xls',
+        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
         'usecols': [
             'shape (HxWxCxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
             'gcc_T4', 'zcc_T4', 'triton_T4',
@@ -24,7 +24,7 @@ datasets = [
     },
     {
         'name': 'resize',
-        'report_file': '/home/crux/workspace/AI-Kernel-Library/Benchmark/build/report.xls',
+        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
         'usecols': [
             'shape (HxWxCxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
             'gcc_T4', 'zcc_T4', 'triton_T4',
@@ -36,7 +36,7 @@ datasets = [
     },
     {
         'name': 'rope',
-        'report_file': '/home/crux/workspace/AI-Kernel-Library/Benchmark/build/report.xls',
+        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
         'usecols': [
             'shape (SEQ_LENxBATCH_NUMxHEAD_NUMxHEAD_DIMxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
             'gcc_T4', 'zcc_T4', 'triton_T4',
@@ -48,7 +48,7 @@ datasets = [
     },
     {
         'name': 'correlation',
-        'report_file': '/home/crux/workspace/AI-Kernel-Library/Benchmark/build/report.xls',
+        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
         'usecols': [
             'shape (OUT_CHANNELxIN_CHANNELxHEIGHTxWIDTHxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
             'gcc_T4', 'zcc_T4', 'triton_T4',
@@ -60,7 +60,7 @@ datasets = [
     },
     {
         'name': 'layernorm',
-        'report_file': '/home/crux/workspace/AI-Kernel-Library/Benchmark/build/report.xls',
+        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
         'usecols': [
             'shape (NxDxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
             'gcc_T4', 'zcc_T4', 'triton_T4',
@@ -72,7 +72,7 @@ datasets = [
     },
     {
         'name': 'matmul',
-        'report_file': '/home/crux/workspace/AI-Kernel-Library/Benchmark/build/report.xls',
+        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
         'usecols': [
             'shape (MxNxKxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
             'gcc_T4', 'zcc_T4', 'triton_T4',
@@ -84,7 +84,7 @@ datasets = [
     },
     {
         'name': 'softmax',
-        'report_file': '/home/crux/workspace/AI-Kernel-Library/Benchmark/build/report.xls',
+        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
         'usecols': [
             'shape (RxCxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
             'gcc_T4', 'zcc_T4', 'triton_T4',

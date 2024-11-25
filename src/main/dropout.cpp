@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     // run triton kernel
 
     std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-
+    int dropout_kernel_BLOCK_SIZE = 4;
     int  grid = ceil((float)N / dropout_kernel_BLOCK_SIZE);
 
     for (int i = 0; i < RUN_COUNT; i++)

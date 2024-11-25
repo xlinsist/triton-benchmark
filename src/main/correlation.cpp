@@ -98,10 +98,13 @@ int main(int argc, char *argv[]) {
 
   // triton kernel
 #ifdef TRITON_KERNEL_ENABLE
-
+  int correlation_kernel_BLOCK_SIZE_H = 4;
+  int correlation_kernel_BLOCK_SIZE_W = 4;
   // BLOCK_SHAPE 64x32x8
   // int grid = ceil((float)HEIGHT / 32) * ceil((float)WIDTH / 8);
   int gridZ = OUT_CHANNEL;
+  // int gridY = ceil((float)HEIGHT / correlation_kernel_BLOCK_SIZE_H);
+  // int gridX = ceil((float)WIDTH / correlation_kernel_BLOCK_SIZE_W);
   int gridY = ceil((float)HEIGHT / correlation_kernel_BLOCK_SIZE_H);
   int gridX = ceil((float)WIDTH / correlation_kernel_BLOCK_SIZE_W);
 
