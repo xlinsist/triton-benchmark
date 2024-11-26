@@ -9,7 +9,7 @@ BENCHMARK=${DIR}/bin/
 THREAD=(1 4 8)
 
 # COMPILER=`ls ${BENCHMARK}`
-COMPILER=(triton gcc zcc)
+COMPILER=(triton gcc clang)
 
 for compiler in ${COMPILER[@]}; do
   for f_sub in `ls ${BENCHMARK}/${compiler}`; do

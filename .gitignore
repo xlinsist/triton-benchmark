@@ -4,6 +4,7 @@ aux/
 lib/
 obj/
 *.xls
+*.txt
 
 # Environments
 .venv
@@ -25,3 +26,4 @@ venv.bak/
 *jpeg
 
 .triton
+sysroot

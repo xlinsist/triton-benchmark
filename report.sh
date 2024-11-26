@@ -2,20 +2,22 @@
 
 DIR=`dirname $0`
 
+# Make your changes here !!!
+RISCV_GNU_TOOLCHAIN_DIR=/home/zhouxulin/intern/buddy-mlir/thirdparty/riscv-gnu-toolchain/install
+
+LLVM_BUILD_DIR=${DIR}/llvm-project/build
+CLANGPP="${LLVM_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
+        --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
+        --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
+        -fvectorize -fslp-vectorize -O3"
+GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
+    -march=rv64gcv_zvl256b -mabi=lp64d -O3"
+
 BENCHMARK=${DIR}/build/bin
 
 REPORT_FILE=${DIR}/build/report.xls
 
 MODE="Accuracy"
-
-ARCH=rv64gcv
-ABI=lp64d
-
-# GCC="riscv64-unknown-linux-gnu-g++ -march=${ARCH} -mabi=${ABI} -O3 -fopenmp -fPIC"
-# ZCC="z++ -fno-lto --target=riscv64-unknown-linux-gnu -march=${ARCH} -mabi=${ABI} -O3 -fopenmp -fPIC"
-GCC="/home/zhouxulin/intern/buddy-mlir/thirdparty/riscv-gnu-toolchain/install/bin/riscv64-unknown-linux-gnu-g++ -march=${ARCH} -mabi=${ABI} -O3"
-ZCC="/home/zhouxulin/intern/zcc-lite-u22/bin/z++ -fno-lto --target=riscv64-unknown-linux-gnu -march=${ARCH} -mabi=${ABI} -O3"
-
 
 # | #####  softmax_kernel kernel performance ##### |
 # | shape (RxCxRUN_COUNT) | gcc_T1  | zcc_T1  | triton_T1 | gcc_T4  | zcc_T4  | triton_T4 | gcc_T8   | zcc_T8   | triton_T8 |
@@ -29,7 +31,7 @@ echo "Report performace to ${REPORT_FILE}"
 # Keyword to extract the kernel running time
 # STAT_KEYWORD=(C Triton)
 
-COMPILER=(gcc zcc triton)
+COMPILER=(gcc clang triton)
 THREADS=(1 4 8)
 
 TRITON_KERNELS=`ls ${BENCHMARK}/triton/`
@@ -108,17 +110,11 @@ for kernel_name in ${TRITON_KERNELS}; do
   echo "" >> ${REPORT_FILE}
 done
 
-
 echo "" >> ${REPORT_FILE}
 echo "" >> ${REPORT_FILE}
-
-
-# May add triton-cpu version?
 
 echo "${GCC}" >> ${REPORT_FILE}
 ${GCC} --version >> ${REPORT_FILE}
-echo "" >> ${REPORT_FILE}
-
-echo "${ZCC}" >> ${REPORT_FILE}
-${ZCC} --version >> ${REPORT_FILE}
+echo "${CLANGPP}" >> ${REPORT_FILE}
+${CLANGPP} --version >> ${REPORT_FILE}
 echo "" >> ${REPORT_FILE}
