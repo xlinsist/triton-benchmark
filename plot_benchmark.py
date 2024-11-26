@@ -10,42 +10,42 @@ import numpy as np
 
 # Define configurations for each dataset
 datasets = [
-    {
-        'name': 'warp',
-        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
-        'usecols': [
-            'shape (HxWxCxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
-            'gcc_T4', 'zcc_T4', 'triton_T4',
-            'gcc_T8', 'zcc_T8', 'triton_T8'
-        ],
-        'nrows': 98,
-        'shape_label': 'H x W x C',
-        'xaxis': (0.96, 0.02),
-    },
-    {
-        'name': 'resize',
-        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
-        'usecols': [
-            'shape (HxWxCxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
-            'gcc_T4', 'zcc_T4', 'triton_T4',
-            'gcc_T8', 'zcc_T8', 'triton_T8'
-        ],
-        'nrows': 98,
-        'shape_label': 'H x W x C',
-        'xaxis': (0.96, 0.02)
-    },
-    {
-        'name': 'rope',
-        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
-        'usecols': [
-            'shape (SEQ_LENxBATCH_NUMxHEAD_NUMxHEAD_DIMxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
-            'gcc_T4', 'zcc_T4', 'triton_T4',
-            'gcc_T8', 'zcc_T8', 'triton_T8'
-        ],
-        'nrows': 89,
-        'shape_label': 'SEQ_LEN x BATCH_NUM x HEAD_NUM x HEAD_DIM',
-        'xaxis': (0.82, 0.02)
-    },
+    # {
+    #     'name': 'warp',
+    #     'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
+    #     'usecols': [
+    #         'shape (HxWxCxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
+    #         'gcc_T4', 'zcc_T4', 'triton_T4',
+    #         'gcc_T8', 'zcc_T8', 'triton_T8'
+    #     ],
+    #     'nrows': 98,
+    #     'shape_label': 'H x W x C',
+    #     'xaxis': (0.96, 0.02),
+    # },
+    # {
+    #     'name': 'resize',
+    #     'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
+    #     'usecols': [
+    #         'shape (HxWxCxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
+    #         'gcc_T4', 'zcc_T4', 'triton_T4',
+    #         'gcc_T8', 'zcc_T8', 'triton_T8'
+    #     ],
+    #     'nrows': 98,
+    #     'shape_label': 'H x W x C',
+    #     'xaxis': (0.96, 0.02)
+    # },
+    # {
+    #     'name': 'rope',
+    #     'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
+    #     'usecols': [
+    #         'shape (SEQ_LENxBATCH_NUMxHEAD_NUMxHEAD_DIMxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
+    #         'gcc_T4', 'zcc_T4', 'triton_T4',
+    #         'gcc_T8', 'zcc_T8', 'triton_T8'
+    #     ],
+    #     'nrows': 89,
+    #     'shape_label': 'SEQ_LEN x BATCH_NUM x HEAD_NUM x HEAD_DIM',
+    #     'xaxis': (0.82, 0.02)
+    # },
     {
         'name': 'correlation',
         'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
@@ -70,18 +70,18 @@ datasets = [
         'shape_label': 'N x D',
         'xaxis': (0.98, 0.02)
     },
-    {
-        'name': 'matmul',
-        'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
-        'usecols': [
-            'shape (MxNxKxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
-            'gcc_T4', 'zcc_T4', 'triton_T4',
-            'gcc_T8', 'zcc_T8', 'triton_T8'
-        ],
-        'nrows': 128,
-        'shape_label': 'M x N x K',
-        'xaxis': (0.96, 0.02)
-    },
+    # {
+    #     'name': 'matmul',
+    #     'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
+    #     'usecols': [
+    #         'shape (MxNxKxRUN_COUNT)', 'gcc_T1', 'zcc_T1', 'triton_T1',
+    #         'gcc_T4', 'zcc_T4', 'triton_T4',
+    #         'gcc_T8', 'zcc_T8', 'triton_T8'
+    #     ],
+    #     'nrows': 128,
+    #     'shape_label': 'M x N x K',
+    #     'xaxis': (0.96, 0.02)
+    # },
     {
         'name': 'softmax',
         'report_file': '/home/zhouxulin/intern/AI-Benchmark/build/report.xls',
@@ -97,12 +97,21 @@ datasets = [
 ]
 
 def norm_performance(shape, value):
-    # Convert to string and split by 'x'
-    parts = str(shape).split('x')
-    # Convert parts to float and multiply them
-    multiplied = np.prod([float(part) for part in parts if part])
-    # Multiply the result with the original value
-    return multiplied/value/10e9
+    try:
+        # Convert shape to string and split by 'x'
+        parts = str(shape).split('x')
+        # Convert parts to float and multiply them
+        multiplied = np.prod([float(part) for part in parts if part.replace('.', '', 1).isdigit()])
+        # Ensure value is a valid float
+        value = float(value)
+        # Prevent division by zero
+        if value == 0:
+            raise ValueError("Value is zero, cannot divide.")
+        # Calculate normalized performance
+        return multiplied / value / 1e10
+    except Exception as e:
+        print(f"Error processing shape: {shape}, value: {value}. Exception: {e}")
+        return np.nan
 
 def split_runcount(value):
   last_x_index = value.rfind('x')
@@ -203,7 +212,7 @@ for dataset in datasets:
 
     # Plot data
     plot(
-        df,
+        df[:3],
         dataset['name'],
         dataset['shape_label'],
         dataset.get('xaxis')

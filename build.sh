@@ -18,7 +18,15 @@ ABI=lp64d
 GCC="/home/zhouxulin/intern/buddy-mlir/thirdparty/riscv-gnu-toolchain/install/bin/riscv64-unknown-linux-gnu-g++ -march=${ARCH} -mabi=${ABI} -O3"
 ZCC="/home/zhouxulin/intern/zcc-lite-u22/bin/z++ -fno-lto --target=riscv64-unknown-linux-gnu -march=${ARCH} -mabi=${ABI} -O3"
 AR="/home/zhouxulin/intern/llvm-project/build/bin/llvm-ar"
-# OBJDUMP="llvm-objdump"
+AS="/home/zhouxulin/intern/llvm-project/build/bin/llvm-as"
+DIS="/home/zhouxulin/intern/llvm-project/build/bin/llvm-dis"
+
+OBJDUMP="/home/zhouxulin/intern/buddy-mlir/thirdparty/riscv-gnu-toolchain/install/bin/riscv64-unknown-linux-gnu-objdump"
+
+CLANG="/home/zhouxulin/intern/buddy-mlir/llvm/build/bin/clang"
+CLANGPP="/home/zhouxulin/intern/buddy-mlir/llvm/build/bin/clang++"
+RISCV_GNU_TOOLCHAIN_SYSROOT_DIR=/home/zhouxulin/intern/buddy-mlir/thirdparty/riscv-gnu-toolchain/install/sysroot
+RISCV_GNU_TOOLCHAIN_DIR=/home/zhouxulin/intern/buddy-mlir/thirdparty/riscv-gnu-toolchain/install
 
 # Python virtual environment for triton kernel compilation
 PYC="python"
@@ -38,12 +46,12 @@ KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 drivers=(
   "${SRC_DIR}/c/correlation.cpp ${SRC_DIR}/triton/correlation.py ${SRC_DIR}/main/correlation.cpp"
   "${SRC_DIR}/c/layernorm.cpp ${SRC_DIR}/triton/layernorm.py ${SRC_DIR}/main/layernorm.cpp"
-  "${SRC_DIR}/c/matmul.cpp ${SRC_DIR}/triton/matmul.py ${SRC_DIR}/main/matmul.cpp"
+  # "${SRC_DIR}/c/matmul.cpp ${SRC_DIR}/triton/matmul.py ${SRC_DIR}/main/matmul.cpp"
   "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp"
-  "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp"
-  "${SRC_DIR}/c/dropout.cpp ${SRC_DIR}/triton/dropout.py ${SRC_DIR}/main/dropout.cpp"
-  "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp"
-  "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp"
+  # "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp"
+  # "${SRC_DIR}/c/dropout.cpp ${SRC_DIR}/triton/dropout.py ${SRC_DIR}/main/dropout.cpp"
+  # "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp"
+  # "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp"
 )
 
 # Default clean build directory
@@ -72,7 +80,6 @@ END
 build_support_lib() {
   ${COMPILER} -fPIC -I ${DIR}/include -c ${SRC_DIR}/support/*.cpp -o ${OBJ_DIR}/support.o
   ${AR} rcs ${LIB_DIR}/libsupport.a ${OBJ_DIR}/support.o
-  cp  /home/zhouxulin/intern/AI-Benchmark/sysroot/lib/* ${LIB_DIR}
 }
 
 # build c kernel
@@ -112,16 +119,29 @@ build_triton_kernel_lib() {
       echo ${kernel_ir}
       # llc -march=riscv64 -mattr=+d,v  ${kernel_ir} -o ${KERNEL_AUX_FILE_DIR}/${kernel_name}.s
       # z++ -march=rv64gcv -fno-lto --target=riscv64-unknown-linux-gnu -S -x ir  -O2 ${kernel_ir} -mllvm --riscv-disable-rvv-fixedlen=false -mrvv-vector-bits=256 -o ${KERNEL_AUX_FILE_DIR}/${kernel_name}.s
-
-      ${ZCC} -S -x ir ${kernel_ir} -mllvm --riscv-disable-rvv-fixedlen=false -mrvv-vector-bits=256 -o ${KERNEL_AUX_FILE_DIR}/${kernel_name}.s
-
-      ${ZCC} -c -o ${OBJ_DIR}/${kernel_name}.o ${KERNEL_AUX_FILE_DIR}/${kernel_name}.s
+      ${AS} -o ${OBJ_DIR}/${kernel_name}.bc ${kernel_ir}
+      ${CLANG} --target=riscv64-unknown-linux-gnu --sysroot=${RISCV_GNU_TOOLCHAIN_SYSROOT_DIR} --gcc-toolchain=${BUILD_RISCV_GNU_TOOLCHAIN_DIR} -c -save-temps=obj ${OBJ_DIR}/${kernel_name}.bc -o ${OBJ_DIR}/${kernel_name}.o
+      # ${ZCC} -S -x ir ${kernel_ir} -mllvm --riscv-disable-rvv-fixedlen=false -mrvv-vector-bits=256 -o ${KERNEL_AUX_FILE_DIR}/${kernel_name}.s
+      # ${ZCC} -c -o ${OBJ_DIR}/${kernel_name}.o ${KERNEL_AUX_FILE_DIR}/${kernel_name}.s
     done
 
     # build triton laucher: launcher.cpp --> .o
     for kernel_launcher in ${KERNEL_AUX_FILE_DIR}/*.cpp; do
       launcher_name=`basename ${kernel_launcher} .cpp`
-      ${ZCC} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -c ${kernel_launcher} -fopenmp -o ${OBJ_DIR}/${launcher_name}.o
+      # ${ZCC} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -c ${kernel_launcher} -fopenmp -o ${OBJ_DIR}/${launcher_name}.o
+      # ${GCC} -fPIC -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -c ${kernel_launcher} -fopenmp -o ${OBJ_DIR}/${launcher_name}.o
+      # ${ZCC} -fPIC -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -c ${kernel_launcher} -fopenmp -o ${OBJ_DIR}/${launcher_name}.o
+      # ${CLANGPP} --target=riscv64-unknown-linux-gnu --sysroot=${RISCV_GNU_TOOLCHAIN_SYSROOT_DIR} --gcc-toolchain=${BUILD_RISCV_GNU_TOOLCHAIN_DIR} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -c ${kernel_launcher} -fopenmp -L/home/zhouxulin/intern/AI-Benchmark/sysroot/lib -o ${OBJ_DIR}/${launcher_name}.o
+      ${CLANGPP} \
+        --target=riscv64-unknown-linux-gnu \
+        --sysroot=${RISCV_GNU_TOOLCHAIN_SYSROOT_DIR} \
+        --gcc-toolchain=${BUILD_RISCV_GNU_TOOLCHAIN_DIR} \
+        -I ${DIR}/include \
+        -I ${KERNEL_LAUNCHER_INCLUDE_DIR} \
+        -c ${kernel_launcher} \
+        -fopenmp \
+        -o ${OBJ_DIR}/${launcher_name}.o
+      # echo "${CLANGPP} --target=riscv64-unknown-linux-gnu --sysroot=${RISCV_GNU_TOOLCHAIN_SYSROOT_DIR} --gcc-toolchain=${BUILD_RISCV_GNU_TOOLCHAIN_DIR} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -c ${kernel_launcher} -fopenmp -L/home/zhouxulin/intern/AI-Benchmark/sysroot/lib -o ${OBJ_DIR}/${launcher_name}.o"
     done
 
   done
@@ -136,6 +156,7 @@ create_dir_hierarchy(){
   mkdir -p ${LIB_DIR}
   mkdir -p ${BIN_DIR}
   mkdir -p ${OBJ_DIR}
+  cp  /home/zhouxulin/intern/AI-Benchmark/sysroot/lib/* ${LIB_DIR}
 }
 
 # build driver
@@ -156,7 +177,8 @@ build_driver(){
       KERNEL_ENABLE=C_KERNEL_ENABLE
       ;;
     triton)
-      COMPILER=${ZCC}
+      # COMPILER=${ZCC}
+      COMPILER=${GCC}
       LIB_DIR=${BUILD_DIR}/lib/triton
       BIN_DIR=${BUILD_DIR}/bin/triton
       OBJ_DIR=${BUILD_DIR}/obj/triton
@@ -193,10 +215,43 @@ build_driver(){
 
     # Compile driver
     # .elf suffix to avoid scp problem(same name dir and kernel)
-    ${COMPILER} ${main} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -L ${LIB_DIR} -fopenmp -lkernel -lsupport -latomic -std=c++17 -D${KERNEL_ENABLE} -fPIC -o ${KERNEL_BIN_DIR}/${name}.elf
-
-    # ${OBJDUMP} -d ${KERNEL_BIN_DIR}/${name}.elf &> ${KERNEL_BIN_DIR}/${name}.elf.s
-
+    
+    if [ "$1" = "triton" ]; then
+    ${CLANGPP} \
+        --target=riscv64-unknown-linux-gnu \
+        --sysroot="${RISCV_GNU_TOOLCHAIN_SYSROOT_DIR}" \
+        --gcc-toolchain="${BUILD_RISCV_GNU_TOOLCHAIN_DIR}" \
+        -O3 \
+        -DCHECK_ACCURACY \
+        "${main}" \
+        -I "${DIR}/include" \
+        -I "${KERNEL_LAUNCHER_INCLUDE_DIR}" \
+        -L "${LIB_DIR}" \
+        -fopenmp \
+        -lkernel \
+        -lsupport \
+        -latomic \
+        --stdlib=libstdc++ \
+        -std=c++17 \
+        -DTRITON_KERNEL_ENABLE \
+        -fPIC \
+        -o "${KERNEL_BIN_DIR}/${name}.elf"
+    else
+    ${COMPILER} \
+        "${main}" \
+        -I "${DIR}/include" \
+        -I "${KERNEL_LAUNCHER_INCLUDE_DIR}" \
+        -L "${LIB_DIR}" \
+        -fopenmp \
+        -lkernel \
+        -lsupport \
+        -latomic \
+        -std=c++17 \
+        -D"${KERNEL_ENABLE}" \
+        -fPIC \
+        -o "${KERNEL_BIN_DIR}/${name}.elf"
+    fi
+    ${OBJDUMP} -d ${KERNEL_BIN_DIR}/${name}.elf &> ${KERNEL_BIN_DIR}/${name}.elf.s
     # Data shape config
     cp ${SRC_DIR}/main/${name}.cfg  ${KERNEL_BIN_DIR}
   done
