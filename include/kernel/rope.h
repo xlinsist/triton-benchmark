@@ -1,1 +1,0 @@
-void rope(float* t, float* freqs_cos, float* freqs_sin, float* output, int seq_len, int batch_num, int head_num, int head_dim);

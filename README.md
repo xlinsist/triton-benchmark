@@ -1,44 +1,60 @@
 # triton-benchmark
-RISCV C and Triton AI-Benchmark. Adapted from https://github.com/Terapines/AI-Benchmark.
 
-## 交叉编译程序到RISC-V上的环境准备
-
-构建riscv-gnu-toolchain，可参考该教程：https://gitee.com/aosp-riscv/working-group/blob/master/articles/20220721-riscv-gcc.md#3-%E7%BC%96%E8%AF%91-risc-v-%E7%9A%84%E4%BA%A4%E5%8F%89%E5%B7%A5%E5%85%B7%E9%93%BE
-
-## 构建步骤（精简版，如原先已成功构建并运行起了triton-cpu）
-
-无需重新构建llvm-project和triton-cpu，只需将triton-cpu的版本回退到38826fcdff（Offload a part of masks optimization to the canonicalizer）即可。此外还要准备一个支持将程序编译到RISC-V上的clang++。如本机没有符合条件的clang++，建议参考下面完整版构建步骤编译llvm得到。
-
-## 构建步骤（完整版，从llvm-project和triton-cpu开始构建）
-
-### 1. Clone and Initialize
+## examples使用示例
+以vector-add为例，将Triton编译器里的中间表示单独拎出来做手动下降（而不是用Triton编译器后端自动下降），最终得到LLVM IR dialect的执行步骤如下：
 ```
-$ git clone git@github.com:xlinsist/triton-benchmark.git
-$ cd triton-benchmark
-$ git submodule update --init
+$ cd examples/vectoradd
+$ make tttcir-lowering
 ```
-### 2. Build and Test LLVM/MLIR/CLANG
-```
-$ cd triton-benchmark
-$ cd ./llvm-project  # cloned as submodule
-$ mkdir build
-$ cd build
-$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON ../llvm -DLLVM_ENABLE_PROJECTS="clang;mlir;llvm" -DLLVM_TARGETS_TO_BUILD="host;RISCV;NVPTX;AMDGPU"
-$ ninja
-```
-> NOTE: 与triton/triton-cpu中README构建llvm的步骤相比，这里还需要额外增加对clang和RISCV平台的支持，以构建出`build.sh`中用到的CLANGPP。
+更多示例见benchmarks目录下的[README](./examples/README.md)。
 
-### 3. Build triton-cpu
-```
-$ cd ../../triton-cpu # cloned as submodule
-$ export LLVM_BUILD_DIR=../llvm-project/build
-$ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
-         LLVM_LIBRARY_DIR=$LLVM_BUILD_DIR/lib \
-         LLVM_SYSPATH=$LLVM_BUILD_DIR \
-         pip install -e python
-```
+## benchmarks使用示例
+ 7个AI算子分别在1核、4核和8核，采用gcc、clang和triton，在RISC-V CPU（SpacemiT Muse Pi）上的执行结果如下，执行步骤见benchmarks目录下的[README](./benchmarks/README.md)。
 
-## 执行步骤
-1. 解压根目录下patch里的压缩包`sysroot.tar.xz`，使得openmp的动态链接库出现的路径为根目录下的"./sysroot/lib/libomp.so"。
-2. 在triton-cpu目录下，git apply根目录下的triton-cpu-0001-RISCV.patch。这个patch涉及的重要改动之一是将triton中间文件（特指llir文件）的生成路径从.triton/cache里改到里特定的位置。
-3. 修改`build.sh`，`copy_to_remote.sh`，`copy_remote_back.sh`和`report.sh`脚本中带有"Make your changes here !!!"字样的代码部分以适配本地工具链的路径。修改完毕上述四个脚本将可以依次运行。
+```
+##### correlation kernel performance #####
+shape (OUT_CHANNELxIN_CHANNELxHEIGHTxWIDTHxRUN_COUNT)	gcc_T1	clang_T1	triton_T1	gcc_T4	clang_T4	triton_T4	gcc_T8	clang_T8	triton_T8
+5x58x112x88x10	0.406807	0.550575	0.185582	0.0896354	0.131778	0.0554982	0.049427	0.0692719	0.0323904
+
+
+
+##### dropout kernel performance #####
+shape (NxRUN_COUNT)	gcc_T1	clang_T1	triton_T1	gcc_T4	clang_T4	triton_T4	gcc_T8	clang_T8	triton_T8
+1048576x10	0.437414	44.4074	16.5371	0.116678	11.179	4.19115	0.0652238	5.60955	2.13063
+
+
+
+##### layernorm kernel performance #####
+shape (NxDxRUN_COUNT)	gcc_T1	clang_T1	triton_T1	gcc_T4	clang_T4	triton_T4	gcc_T8	clang_T8	triton_T8
+1151x8192x10	3.99499	5.10841	4.87809	1.1298	1.37735	1.63461	1.03388	0.985506	1.00223
+
+
+
+##### matmul kernel performance #####
+shape (MxNxKxRUN_COUNT)	gcc_T1	clang_T1	triton_T1	gcc_T4	clang_T4	triton_T4	gcc_T8	clang_T8	triton_T8
+128x128x64x10	0.0529591	0.063293	2.19012	0.017613	0.0199949	0.564048	0.0123523	0.0135753	0.286434
+
+
+
+##### resize kernel performance #####
+shape (HxWxCxRUN_COUNT)	gcc_T1	clang_T1	triton_T1	gcc_T4	clang_T4	triton_T4	gcc_T8	clang_T8	triton_T8
+512x512x3x10	0.802106	1.19739	1.42896	0.205363	0.304806	0.362561	0.107914	0.157187	0.186983
+
+
+
+##### rope kernel performance #####
+shape (SEQ_LENxBATCH_NUMxHEAD_NUMxHEAD_DIMxRUN_COUNT)	gcc_T1	clang_T1	triton_T1	gcc_T4	clang_T4	triton_T4	gcc_T8	clang_T8	triton_T8
+512x16x8x1024x10	6.71872	7.74758	11.4048	2.25791	2.43972	3.19468	1.86013	1.97924	2.25463
+
+
+
+##### softmax_kernel kernel performance #####
+shape (RxCxRUN_COUNT)	gcc_T1	clang_T1	triton_T1	gcc_T4	clang_T4	triton_T4	gcc_T8	clang_T8	triton_T8
+1823x781x10	0.841515	0.820086	0.904563	0.221429	0.212233	0.232222	0.116075	0.112719	0.122978
+
+
+
+##### warp kernel performance #####
+shape (HxWxCxRUN_COUNT)	gcc_T1	clang_T1	triton_T1	gcc_T4	clang_T4	triton_T4	gcc_T8	clang_T8	triton_T8
+1024x1024x3x10	0.620494	1.33427	1.22298	0.161322	0.339647	0.311901	0.0858445	0.174764	0.161152
+```

@@ -58,8 +58,13 @@ index af3bb7cc..efa844b4 100644
 +        launcher_src_dir = os.getenv("KERNEL_AUX_FILE_DIR")
 +        if launcher_src_dir is not None:
 +            os.makedirs(launcher_src_dir, mode=0o777, exist_ok=True)
++            ttcir_path = os.path.join(launcher_src_dir, kernel.name + ".ttcir")
++            tttcir_path = os.path.join(launcher_src_dir, kernel.name + ".tttcir")
 +            llir_path = os.path.join(launcher_src_dir, kernel.name + ".llir")
-+            # print("llir_path: ", llir_path)
++            with open(ttcir_path, "w") as f:
++                f.write(kernel.asm["ttcir"])
++            with open(tttcir_path, "w") as f:
++                f.write(kernel.asm["tttcir"])
 +            with open(llir_path, "w") as f:
 +                f.write(kernel.asm["llir"])
 +
