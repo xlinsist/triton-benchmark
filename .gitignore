@@ -1,6 +1,3 @@
-# Triton builds
-benchmarks/build/
-
 *.xls
 *.txt
 
