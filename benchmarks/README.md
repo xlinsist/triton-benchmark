@@ -25,7 +25,7 @@ $ git submodule update --init
 ```
 **2. Build and Test LLVM/MLIR/CLANG**
 ```
-$ cd triton-benchmark
+$ cd benchmarks
 $ cd ./llvm-project  # cloned as submodule
 $ mkdir build
 $ cd build
