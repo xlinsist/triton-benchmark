@@ -7,10 +7,10 @@
 DIR=`dirname $0`
 SRC_DIR=${DIR}/src
 BUILD_DIR=${DIR}/build
-LLVM_BUILD_DIR=${DIR}/../llvm-project/build
+LLVM_BUILD_DIR=${DIR}/llvm-project/build
 
 PYC="python"
-TRITON_PLUGIN_DIRS=${DIR}/../triton-cpu
+TRITON_PLUGIN_DIRS=${DIR}/triton-cpu
 KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 
 CLANGPP="${LLVM_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \

@@ -1,8 +1,6 @@
-[submodule "triton-cpu"]
-	path = triton-cpu
+[submodule "benchmarks/triton-cpu"]
+	path = benchmarks/triton-cpu
 	url = https://github.com/northstreet12/triton-cpu.git
-	branch = main
-	shallow = true
-[submodule "llvm-project"]
-	path = llvm-project
+[submodule "benchmarks/llvm-project"]
+	path = benchmarks/llvm-project
 	url = https://github.com/llvm/llvm-project.git
