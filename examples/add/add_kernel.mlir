@@ -1,0 +1,149 @@
+module attributes {"triton_gpu.num-ctas" = 1 : i32, "triton_gpu.num-warps" = 4 : i32, triton_gpu.target = "cuda:75", "triton_gpu.threads-per-warp" = 32 : i32} {
+  llvm.mlir.global external @global_smem() {addr_space = 3 : i32, alignment = 16 : i64} : !llvm.array<0 x i8>
+  llvm.func @add_kernel(%arg0: !llvm.ptr<1> {tt.divisibility = 16 : i32}, %arg1: !llvm.ptr<1> {tt.divisibility = 16 : i32}, %arg2: !llvm.ptr<1> {tt.divisibility = 16 : i32}, %arg3: i32 {tt.divisibility = 16 : i32}) attributes {noinline = false, nvvm.kernel = 1 : ui1, nvvm.reqntid = array<i32: 128>} {
+    %0 = llvm.mlir.undef : vector<1xf32>
+    %1 = llvm.mlir.constant(true) : i1
+    %2 = llvm.mlir.constant(512 : i32) : i32
+    %3 = llvm.mlir.constant(256 : i32) : i32
+    %4 = llvm.mlir.constant(128 : i32) : i32
+    %5 = llvm.mlir.constant(64 : i32) : i32
+    %6 = llvm.mlir.constant(16 : i32) : i32
+    %7 = llvm.mlir.constant(8 : i32) : i32
+    %8 = llvm.mlir.constant(2 : i32) : i32
+    %9 = llvm.mlir.constant(4 : i32) : i32
+    %10 = llvm.mlir.constant(1 : i32) : i32
+    %11 = llvm.mlir.constant(0 : i32) : i32
+    %12 = llvm.mlir.constant(32 : i32) : i32
+    %13 = llvm.mlir.constant(0 : index) : i32
+    %14 = llvm.mlir.constant(1024 : i32) : i32
+    %15 = llvm.inline_asm asm_dialect = att operand_attrs = [] "mov.u32 $0, %ctaid.x;", "=r"  : () -> i32
+    %16 = llvm.mul %15, %14 : i32
+    %17 = nvvm.read.ptx.sreg.tid.x : i32
+    %18 = llvm.urem %17, %12  : i32
+    %19 = llvm.udiv %17, %12  : i32
+    %20 = llvm.and %18, %10  : i32
+    %21 = llvm.icmp "eq" %20, %11 : i32
+    %22 = llvm.select %21, %11, %9 : i1, i32
+    %23 = llvm.xor %11, %22  : i32
+    %24 = llvm.and %18, %8  : i32
+    %25 = llvm.icmp "eq" %24, %11 : i32
+    %26 = llvm.select %25, %11, %7 : i1, i32
+    %27 = llvm.xor %23, %26  : i32
+    %28 = llvm.and %18, %9  : i32
+    %29 = llvm.icmp "eq" %28, %11 : i32
+    %30 = llvm.select %29, %11, %6 : i1, i32
+    %31 = llvm.xor %27, %30  : i32
+    %32 = llvm.and %18, %7  : i32
+    %33 = llvm.icmp "eq" %32, %11 : i32
+    %34 = llvm.select %33, %11, %12 : i1, i32
+    %35 = llvm.xor %31, %34  : i32
+    %36 = llvm.and %18, %6  : i32
+    %37 = llvm.icmp "eq" %36, %11 : i32
+    %38 = llvm.select %37, %11, %5 : i1, i32
+    %39 = llvm.xor %35, %38  : i32
+    %40 = llvm.and %19, %10  : i32
+    %41 = llvm.icmp "eq" %40, %11 : i32
+    %42 = llvm.select %41, %11, %4 : i1, i32
+    %43 = llvm.xor %39, %42  : i32
+    %44 = llvm.and %19, %8  : i32
+    %45 = llvm.icmp "eq" %44, %11 : i32
+    %46 = llvm.select %45, %11, %3 : i1, i32
+    %47 = llvm.xor %43, %46  : i32
+    %48 = llvm.xor %47, %11  : i32
+    %49 = llvm.xor %47, %2  : i32
+    %50 = llvm.add %48, %13 : i32
+    %51 = llvm.add %49, %13 : i32
+    %52 = llvm.add %16, %50 : i32
+    %53 = llvm.add %16, %51 : i32
+    %54 = llvm.icmp "slt" %52, %arg3 : i32
+    %55 = llvm.icmp "slt" %53, %arg3 : i32
+    %56 = llvm.getelementptr %arg0[%52] : (!llvm.ptr<1>, i32) -> !llvm.ptr<1>, f32
+    %57 = llvm.getelementptr %arg0[%53] : (!llvm.ptr<1>, i32) -> !llvm.ptr<1>, f32
+    %58 = llvm.inline_asm has_side_effects asm_dialect = att operand_attrs = [] "mov.u32 $0, 0x0;\0A\09mov.u32 $1, 0x0;\0A\09mov.u32 $2, 0x0;\0A\09mov.u32 $3, 0x0;\0A\09@$5 ld.global.v4.b32 { $0, $1, $2, $3 }, [ $4 + 0 ];", "=r,=r,=r,=r,l,b" %56, %54 : (!llvm.ptr<1>, i1) -> !llvm.struct<(i32, i32, i32, i32)>
+    %59 = llvm.extractvalue %58[0] : !llvm.struct<(i32, i32, i32, i32)> 
+    %60 = llvm.bitcast %59 : i32 to vector<1xf32>
+    %61 = llvm.extractvalue %58[1] : !llvm.struct<(i32, i32, i32, i32)> 
+    %62 = llvm.bitcast %61 : i32 to vector<1xf32>
+    %63 = llvm.extractvalue %58[2] : !llvm.struct<(i32, i32, i32, i32)> 
+    %64 = llvm.bitcast %63 : i32 to vector<1xf32>
+    %65 = llvm.extractvalue %58[3] : !llvm.struct<(i32, i32, i32, i32)> 
+    %66 = llvm.bitcast %65 : i32 to vector<1xf32>
+    %67 = llvm.extractelement %60[%13 : i32] : vector<1xf32>
+    %68 = llvm.extractelement %62[%13 : i32] : vector<1xf32>
+    %69 = llvm.extractelement %64[%13 : i32] : vector<1xf32>
+    %70 = llvm.extractelement %66[%13 : i32] : vector<1xf32>
+    %71 = llvm.inline_asm has_side_effects asm_dialect = att operand_attrs = [] "mov.u32 $0, 0x0;\0A\09mov.u32 $1, 0x0;\0A\09mov.u32 $2, 0x0;\0A\09mov.u32 $3, 0x0;\0A\09@$5 ld.global.v4.b32 { $0, $1, $2, $3 }, [ $4 + 0 ];", "=r,=r,=r,=r,l,b" %57, %55 : (!llvm.ptr<1>, i1) -> !llvm.struct<(i32, i32, i32, i32)>
+    %72 = llvm.extractvalue %71[0] : !llvm.struct<(i32, i32, i32, i32)> 
+    %73 = llvm.bitcast %72 : i32 to vector<1xf32>
+    %74 = llvm.extractvalue %71[1] : !llvm.struct<(i32, i32, i32, i32)> 
+    %75 = llvm.bitcast %74 : i32 to vector<1xf32>
+    %76 = llvm.extractvalue %71[2] : !llvm.struct<(i32, i32, i32, i32)> 
+    %77 = llvm.bitcast %76 : i32 to vector<1xf32>
+    %78 = llvm.extractvalue %71[3] : !llvm.struct<(i32, i32, i32, i32)> 
+    %79 = llvm.bitcast %78 : i32 to vector<1xf32>
+    %80 = llvm.extractelement %73[%13 : i32] : vector<1xf32>
+    %81 = llvm.extractelement %75[%13 : i32] : vector<1xf32>
+    %82 = llvm.extractelement %77[%13 : i32] : vector<1xf32>
+    %83 = llvm.extractelement %79[%13 : i32] : vector<1xf32>
+    %84 = llvm.getelementptr %arg1[%52] : (!llvm.ptr<1>, i32) -> !llvm.ptr<1>, f32
+    %85 = llvm.getelementptr %arg1[%53] : (!llvm.ptr<1>, i32) -> !llvm.ptr<1>, f32
+    %86 = llvm.inline_asm has_side_effects asm_dialect = att operand_attrs = [] "mov.u32 $0, 0x0;\0A\09mov.u32 $1, 0x0;\0A\09mov.u32 $2, 0x0;\0A\09mov.u32 $3, 0x0;\0A\09@$5 ld.global.v4.b32 { $0, $1, $2, $3 }, [ $4 + 0 ];", "=r,=r,=r,=r,l,b" %84, %54 : (!llvm.ptr<1>, i1) -> !llvm.struct<(i32, i32, i32, i32)>
+    %87 = llvm.extractvalue %86[0] : !llvm.struct<(i32, i32, i32, i32)> 
+    %88 = llvm.bitcast %87 : i32 to vector<1xf32>
+    %89 = llvm.extractvalue %86[1] : !llvm.struct<(i32, i32, i32, i32)> 
+    %90 = llvm.bitcast %89 : i32 to vector<1xf32>
+    %91 = llvm.extractvalue %86[2] : !llvm.struct<(i32, i32, i32, i32)> 
+    %92 = llvm.bitcast %91 : i32 to vector<1xf32>
+    %93 = llvm.extractvalue %86[3] : !llvm.struct<(i32, i32, i32, i32)> 
+    %94 = llvm.bitcast %93 : i32 to vector<1xf32>
+    %95 = llvm.extractelement %88[%13 : i32] : vector<1xf32>
+    %96 = llvm.extractelement %90[%13 : i32] : vector<1xf32>
+    %97 = llvm.extractelement %92[%13 : i32] : vector<1xf32>
+    %98 = llvm.extractelement %94[%13 : i32] : vector<1xf32>
+    %99 = llvm.inline_asm has_side_effects asm_dialect = att operand_attrs = [] "mov.u32 $0, 0x0;\0A\09mov.u32 $1, 0x0;\0A\09mov.u32 $2, 0x0;\0A\09mov.u32 $3, 0x0;\0A\09@$5 ld.global.v4.b32 { $0, $1, $2, $3 }, [ $4 + 0 ];", "=r,=r,=r,=r,l,b" %85, %55 : (!llvm.ptr<1>, i1) -> !llvm.struct<(i32, i32, i32, i32)>
+    %100 = llvm.extractvalue %99[0] : !llvm.struct<(i32, i32, i32, i32)> 
+    %101 = llvm.bitcast %100 : i32 to vector<1xf32>
+    %102 = llvm.extractvalue %99[1] : !llvm.struct<(i32, i32, i32, i32)> 
+    %103 = llvm.bitcast %102 : i32 to vector<1xf32>
+    %104 = llvm.extractvalue %99[2] : !llvm.struct<(i32, i32, i32, i32)> 
+    %105 = llvm.bitcast %104 : i32 to vector<1xf32>
+    %106 = llvm.extractvalue %99[3] : !llvm.struct<(i32, i32, i32, i32)> 
+    %107 = llvm.bitcast %106 : i32 to vector<1xf32>
+    %108 = llvm.extractelement %101[%13 : i32] : vector<1xf32>
+    %109 = llvm.extractelement %103[%13 : i32] : vector<1xf32>
+    %110 = llvm.extractelement %105[%13 : i32] : vector<1xf32>
+    %111 = llvm.extractelement %107[%13 : i32] : vector<1xf32>
+    %112 = llvm.fadd %67, %95  : f32
+    %113 = llvm.fadd %68, %96  : f32
+    %114 = llvm.fadd %69, %97  : f32
+    %115 = llvm.fadd %70, %98  : f32
+    %116 = llvm.fadd %80, %108  : f32
+    %117 = llvm.fadd %81, %109  : f32
+    %118 = llvm.fadd %82, %110  : f32
+    %119 = llvm.fadd %83, %111  : f32
+    %120 = llvm.getelementptr %arg2[%52] : (!llvm.ptr<1>, i32) -> !llvm.ptr<1>, f32
+    %121 = llvm.getelementptr %arg2[%53] : (!llvm.ptr<1>, i32) -> !llvm.ptr<1>, f32
+    %122 = llvm.insertelement %112, %0[%11 : i32] : vector<1xf32>
+    %123 = llvm.bitcast %122 : vector<1xf32> to i32
+    %124 = llvm.insertelement %113, %0[%11 : i32] : vector<1xf32>
+    %125 = llvm.bitcast %124 : vector<1xf32> to i32
+    %126 = llvm.insertelement %114, %0[%11 : i32] : vector<1xf32>
+    %127 = llvm.bitcast %126 : vector<1xf32> to i32
+    %128 = llvm.insertelement %115, %0[%11 : i32] : vector<1xf32>
+    %129 = llvm.bitcast %128 : vector<1xf32> to i32
+    %130 = llvm.and %1, %54  : i1
+    %131 = llvm.inline_asm has_side_effects asm_dialect = att operand_attrs = [] "@$5 st.global.v4.b32 [ $4 + 0 ], { $0, $1, $2, $3 };", "r,r,r,r,l,b" %123, %125, %127, %129, %120, %130 : (i32, i32, i32, i32, !llvm.ptr<1>, i1) -> !llvm.void
+    %132 = llvm.insertelement %116, %0[%11 : i32] : vector<1xf32>
+    %133 = llvm.bitcast %132 : vector<1xf32> to i32
+    %134 = llvm.insertelement %117, %0[%11 : i32] : vector<1xf32>
+    %135 = llvm.bitcast %134 : vector<1xf32> to i32
+    %136 = llvm.insertelement %118, %0[%11 : i32] : vector<1xf32>
+    %137 = llvm.bitcast %136 : vector<1xf32> to i32
+    %138 = llvm.insertelement %119, %0[%11 : i32] : vector<1xf32>
+    %139 = llvm.bitcast %138 : vector<1xf32> to i32
+    %140 = llvm.and %1, %55  : i1
+    %141 = llvm.inline_asm has_side_effects asm_dialect = att operand_attrs = [] "@$5 st.global.v4.b32 [ $4 + 0 ], { $0, $1, $2, $3 };", "r,r,r,r,l,b" %133, %135, %137, %139, %121, %140 : (i32, i32, i32, i32, !llvm.ptr<1>, i1) -> !llvm.void
+    llvm.return
+  }
+}
+
