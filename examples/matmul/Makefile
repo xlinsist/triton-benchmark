@@ -21,6 +21,19 @@ PASSES_FLAGS = 	--decompose-unsupported-nvidia-conversions \
 	--cse \
 	--symbol-dce \
 
+PASSES_FLAGS_COMPACT = --tritongpu-combine-tensor-select-and-if  \
+	--convert-scf-to-cf \
+	--convert-index-to-llvm \
+	--allocate-shared-memory \
+	--tritongpu-global-scratch-memory-allocation \
+	--convert-triton-gpu-to-llvm\
+	--convert-arith-to-llvm \
+	--canonicalize \
+	--cse \
+	--symbol-dce \
+# Uncomment line below to use PASSES_FLAGS_COMPACT
+# PASSES_FLAGS = PASSES_FLAGS_COMPACT
+
 matmul_kernel_llvm.mlir: matmul_kernel.ttgir
 	@${TRITON_OPT} ${PASSES_FLAGS} --o $@ $<
 
