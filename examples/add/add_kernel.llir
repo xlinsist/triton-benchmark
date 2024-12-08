@@ -1,0 +1,147 @@
+; ModuleID = 'LLVMDialectModule'
+source_filename = "LLVMDialectModule"
+
+@global_smem = external addrspace(3) global [0 x i8], align 16
+
+define void @add_kernel(ptr addrspace(1) %0, ptr addrspace(1) %1, ptr addrspace(1) %2, i32 %3) {
+  %5 = call i32 asm "mov.u32 $0, %ctaid.x;", "=r"()
+  %6 = mul i32 %5, 1024
+  %7 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
+  %8 = urem i32 %7, 32
+  %9 = udiv i32 %7, 32
+  %10 = and i32 %8, 1
+  %11 = icmp eq i32 %10, 0
+  %12 = select i1 %11, i32 0, i32 4
+  %13 = xor i32 0, %12
+  %14 = and i32 %8, 2
+  %15 = icmp eq i32 %14, 0
+  %16 = select i1 %15, i32 0, i32 8
+  %17 = xor i32 %13, %16
+  %18 = and i32 %8, 4
+  %19 = icmp eq i32 %18, 0
+  %20 = select i1 %19, i32 0, i32 16
+  %21 = xor i32 %17, %20
+  %22 = and i32 %8, 8
+  %23 = icmp eq i32 %22, 0
+  %24 = select i1 %23, i32 0, i32 32
+  %25 = xor i32 %21, %24
+  %26 = and i32 %8, 16
+  %27 = icmp eq i32 %26, 0
+  %28 = select i1 %27, i32 0, i32 64
+  %29 = xor i32 %25, %28
+  %30 = and i32 %9, 1
+  %31 = icmp eq i32 %30, 0
+  %32 = select i1 %31, i32 0, i32 128
+  %33 = xor i32 %29, %32
+  %34 = and i32 %9, 2
+  %35 = icmp eq i32 %34, 0
+  %36 = select i1 %35, i32 0, i32 256
+  %37 = xor i32 %33, %36
+  %38 = xor i32 %37, 0
+  %39 = xor i32 %37, 512
+  %40 = add i32 %38, 0
+  %41 = add i32 %39, 0
+  %42 = add i32 %6, %40
+  %43 = add i32 %6, %41
+  %44 = icmp slt i32 %42, %3
+  %45 = icmp slt i32 %43, %3
+  %46 = getelementptr float, ptr addrspace(1) %0, i32 %42
+  %47 = getelementptr float, ptr addrspace(1) %0, i32 %43
+  %48 = call { i32, i32, i32, i32 } asm sideeffect "mov.u32 $0, 0x0;\0A\09mov.u32 $1, 0x0;\0A\09mov.u32 $2, 0x0;\0A\09mov.u32 $3, 0x0;\0A\09@$5 ld.global.v4.b32 { $0, $1, $2, $3 }, [ $4 + 0 ];", "=r,=r,=r,=r,l,b"(ptr addrspace(1) %46, i1 %44)
+  %49 = extractvalue { i32, i32, i32, i32 } %48, 0
+  %50 = bitcast i32 %49 to <1 x float>
+  %51 = extractvalue { i32, i32, i32, i32 } %48, 1
+  %52 = bitcast i32 %51 to <1 x float>
+  %53 = extractvalue { i32, i32, i32, i32 } %48, 2
+  %54 = bitcast i32 %53 to <1 x float>
+  %55 = extractvalue { i32, i32, i32, i32 } %48, 3
+  %56 = bitcast i32 %55 to <1 x float>
+  %57 = extractelement <1 x float> %50, i32 0
+  %58 = extractelement <1 x float> %52, i32 0
+  %59 = extractelement <1 x float> %54, i32 0
+  %60 = extractelement <1 x float> %56, i32 0
+  %61 = call { i32, i32, i32, i32 } asm sideeffect "mov.u32 $0, 0x0;\0A\09mov.u32 $1, 0x0;\0A\09mov.u32 $2, 0x0;\0A\09mov.u32 $3, 0x0;\0A\09@$5 ld.global.v4.b32 { $0, $1, $2, $3 }, [ $4 + 0 ];", "=r,=r,=r,=r,l,b"(ptr addrspace(1) %47, i1 %45)
+  %62 = extractvalue { i32, i32, i32, i32 } %61, 0
+  %63 = bitcast i32 %62 to <1 x float>
+  %64 = extractvalue { i32, i32, i32, i32 } %61, 1
+  %65 = bitcast i32 %64 to <1 x float>
+  %66 = extractvalue { i32, i32, i32, i32 } %61, 2
+  %67 = bitcast i32 %66 to <1 x float>
+  %68 = extractvalue { i32, i32, i32, i32 } %61, 3
+  %69 = bitcast i32 %68 to <1 x float>
+  %70 = extractelement <1 x float> %63, i32 0
+  %71 = extractelement <1 x float> %65, i32 0
+  %72 = extractelement <1 x float> %67, i32 0
+  %73 = extractelement <1 x float> %69, i32 0
+  %74 = getelementptr float, ptr addrspace(1) %1, i32 %42
+  %75 = getelementptr float, ptr addrspace(1) %1, i32 %43
+  %76 = call { i32, i32, i32, i32 } asm sideeffect "mov.u32 $0, 0x0;\0A\09mov.u32 $1, 0x0;\0A\09mov.u32 $2, 0x0;\0A\09mov.u32 $3, 0x0;\0A\09@$5 ld.global.v4.b32 { $0, $1, $2, $3 }, [ $4 + 0 ];", "=r,=r,=r,=r,l,b"(ptr addrspace(1) %74, i1 %44)
+  %77 = extractvalue { i32, i32, i32, i32 } %76, 0
+  %78 = bitcast i32 %77 to <1 x float>
+  %79 = extractvalue { i32, i32, i32, i32 } %76, 1
+  %80 = bitcast i32 %79 to <1 x float>
+  %81 = extractvalue { i32, i32, i32, i32 } %76, 2
+  %82 = bitcast i32 %81 to <1 x float>
+  %83 = extractvalue { i32, i32, i32, i32 } %76, 3
+  %84 = bitcast i32 %83 to <1 x float>
+  %85 = extractelement <1 x float> %78, i32 0
+  %86 = extractelement <1 x float> %80, i32 0
+  %87 = extractelement <1 x float> %82, i32 0
+  %88 = extractelement <1 x float> %84, i32 0
+  %89 = call { i32, i32, i32, i32 } asm sideeffect "mov.u32 $0, 0x0;\0A\09mov.u32 $1, 0x0;\0A\09mov.u32 $2, 0x0;\0A\09mov.u32 $3, 0x0;\0A\09@$5 ld.global.v4.b32 { $0, $1, $2, $3 }, [ $4 + 0 ];", "=r,=r,=r,=r,l,b"(ptr addrspace(1) %75, i1 %45)
+  %90 = extractvalue { i32, i32, i32, i32 } %89, 0
+  %91 = bitcast i32 %90 to <1 x float>
+  %92 = extractvalue { i32, i32, i32, i32 } %89, 1
+  %93 = bitcast i32 %92 to <1 x float>
+  %94 = extractvalue { i32, i32, i32, i32 } %89, 2
+  %95 = bitcast i32 %94 to <1 x float>
+  %96 = extractvalue { i32, i32, i32, i32 } %89, 3
+  %97 = bitcast i32 %96 to <1 x float>
+  %98 = extractelement <1 x float> %91, i32 0
+  %99 = extractelement <1 x float> %93, i32 0
+  %100 = extractelement <1 x float> %95, i32 0
+  %101 = extractelement <1 x float> %97, i32 0
+  %102 = fadd float %57, %85
+  %103 = fadd float %58, %86
+  %104 = fadd float %59, %87
+  %105 = fadd float %60, %88
+  %106 = fadd float %70, %98
+  %107 = fadd float %71, %99
+  %108 = fadd float %72, %100
+  %109 = fadd float %73, %101
+  %110 = getelementptr float, ptr addrspace(1) %2, i32 %42
+  %111 = getelementptr float, ptr addrspace(1) %2, i32 %43
+  %112 = insertelement <1 x float> undef, float %102, i32 0
+  %113 = bitcast <1 x float> %112 to i32
+  %114 = insertelement <1 x float> undef, float %103, i32 0
+  %115 = bitcast <1 x float> %114 to i32
+  %116 = insertelement <1 x float> undef, float %104, i32 0
+  %117 = bitcast <1 x float> %116 to i32
+  %118 = insertelement <1 x float> undef, float %105, i32 0
+  %119 = bitcast <1 x float> %118 to i32
+  %120 = and i1 true, %44
+  call void asm sideeffect "@$5 st.global.v4.b32 [ $4 + 0 ], { $0, $1, $2, $3 };", "r,r,r,r,l,b"(i32 %113, i32 %115, i32 %117, i32 %119, ptr addrspace(1) %110, i1 %120)
+  %121 = insertelement <1 x float> undef, float %106, i32 0
+  %122 = bitcast <1 x float> %121 to i32
+  %123 = insertelement <1 x float> undef, float %107, i32 0
+  %124 = bitcast <1 x float> %123 to i32
+  %125 = insertelement <1 x float> undef, float %108, i32 0
+  %126 = bitcast <1 x float> %125 to i32
+  %127 = insertelement <1 x float> undef, float %109, i32 0
+  %128 = bitcast <1 x float> %127 to i32
+  %129 = and i1 true, %45
+  call void asm sideeffect "@$5 st.global.v4.b32 [ $4 + 0 ], { $0, $1, $2, $3 };", "r,r,r,r,l,b"(i32 %122, i32 %124, i32 %126, i32 %128, ptr addrspace(1) %111, i1 %129)
+  ret void
+}
+
+; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
+declare noundef i32 @llvm.nvvm.read.ptx.sreg.tid.x() #0
+
+attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
+
+!llvm.module.flags = !{!0}
+!nvvm.annotations = !{!1, !2}
+
+!0 = !{i32 2, !"Debug Info Version", i32 3}
+!1 = !{ptr @add_kernel, !"kernel", i32 1}
+!2 = !{ptr @add_kernel, !"reqntidx", i32 128}
