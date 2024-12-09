@@ -1,0 +1,34 @@
+From 8e28227927225cada2bf0fe0c2a6ae8bfad52007 Mon Sep 17 00:00:00 2001
+From: Castorp Winston <xvyv99@163.com>
+Date: Mon, 9 Dec 2024 15:29:00 +0800
+Subject: [PATCH] [Ventus][fix] Add CallingConvention of Ventus kernel in MLIR.
+
+---
+ mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td b/mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td
+index 45e03b3d2840..39b82880f617 100644
+--- a/mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td
++++ b/mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td
+@@ -172,6 +172,8 @@ def CConvAMDGPU_Gfx : LLVM_EnumAttrCase<"AMDGPU_Gfx", "amdgpu_gfxcc",
+                                         "AMDGPU_Gfx", 100>;
+ def CConvM68k_INTR : LLVM_EnumAttrCase<"M68k_INTR", "m68k_intrcc", "M68k_INTR",
+                                        101>;
++def CConvVENTUS_KERNEL : LLVM_EnumAttrCase<"VENTUS_KERNEL", "ventus_kernelcc",
++                                         "VENTUS_KERNEL", 104>;
+ 
+ def CConvEnum : LLVM_CEnumAttr<
+     "CConv",
+@@ -188,7 +190,7 @@ def CConvEnum : LLVM_CEnumAttr<
+      CConvAMDGPU_VS, CConvAMDGPU_GS, CConvAMDGPU_CS, CConvAMDGPU_KERNEL,
+      CConvX86_RegCall, CConvAMDGPU_HS, CConvMSP430_BUILTIN, CConvAMDGPU_LS,
+      CConvAMDGPU_ES, CConvAArch64_VectorCall, CConvAArch64_SVE_VectorCall,
+-     CConvWASM_EmscriptenInvoke, CConvAMDGPU_Gfx, CConvM68k_INTR
++     CConvWASM_EmscriptenInvoke, CConvAMDGPU_Gfx, CConvM68k_INTR, CConvVENTUS_KERNEL
+     ]> {
+   let cppNamespace = "::mlir::LLVM::cconv";
+ }
+-- 
+2.43.0
+
