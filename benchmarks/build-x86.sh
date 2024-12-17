@@ -15,13 +15,10 @@ PYC="python"
 TRITON_PLUGIN_DIRS=${DIR}/triton-cpu
 KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 
-CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
-        --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
-        --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
-        -fvectorize -fslp-vectorize -O3"
-GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
-    -march=rv64gcv_zvl256b -mabi=lp64d -O3"
-OBJDUMP="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-objdump"
+CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ -march=native -fvectorize -fslp-vectorize -O3"
+GCC_BUILD_DIR=/usr
+GCC="${GCC_BUILD_DIR}/bin/g++ -march=native -O3"
+OBJDUMP="${GCC_BUILD_DIR}/bin/objdump"
 
 ################################################################################
 # Core functions for building. No need to modify code here
@@ -94,9 +91,7 @@ create_dir_hierarchy(){
   mkdir -p ${LIB_DIR}
   mkdir -p ${BIN_DIR}
   mkdir -p ${OBJ_DIR}
-  # Prepare openmp lib on RISC-V
-  cp  ./openmp-sysroot/lib/* ${LIB_DIR}
-}·
+}
 
 build_driver(){
   case $1 in

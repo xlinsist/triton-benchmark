@@ -1,3 +1,4 @@
 # Triton builds
 build/
-build-cp/
+build-x86/
+build-rv/

@@ -2,13 +2,13 @@
 
 DIR=`dirname $0`
 
-LLVM_BUILD_DIR=${DIR}/llvm-project/build
-CLANGPP="${LLVM_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
-        --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
-        --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
-        -fvectorize -fslp-vectorize -O3"
-GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
-    -march=rv64gcv_zvl256b -mabi=lp64d -O3"
+# LLVM_BUILD_DIR=${DIR}/llvm-project/build
+# CLANGPP="${LLVM_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
+#         --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
+#         --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
+#         -fvectorize -fslp-vectorize -O3"
+# GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
+#     -march=rv64gcv_zvl256b -mabi=lp64d -O3"
 
 BENCHMARK=${DIR}/build/bin
 
@@ -68,7 +68,6 @@ for kernel_name in ${TRITON_KERNELS}; do
         if [ ! -d "${kernel_dir}" ];then
             continue
         fi
-        echo "${kernel_dir}"
 
         #=================================================#
         # NOTE: depend on the format of perf.log
@@ -76,12 +75,12 @@ for kernel_name in ${TRITON_KERNELS}; do
 
         # percentage=1.0
         for kernel in `ls -v ${kernel_dir}/${kernel_name}*.elf`; do
-          echo ${kernel}
           tmp=`basename ${kernel} .elf`
 
           second=$(cat ${kernel_dir}/${tmp}_T${thread}_S${shape}.log | sed -n "s/^.* Kernel Time: \([0-9]\+\(\.[0-9]\+\)*\).*/\1/p")
           # percentage=$(echo "scale=2; ${second} / ${percentage}" | bc)
 
+          echo "read from ${kernel_dir}/${tmp}_T${thread}_S${shape}.log, get time ${second} s."
           echo -ne "\t${second}" >> ${REPORT_FILE}
         done
       done
@@ -110,8 +109,8 @@ done
 echo "" >> ${REPORT_FILE}
 echo "" >> ${REPORT_FILE}
 
-echo "${GCC}" >> ${REPORT_FILE}
-${GCC} --version >> ${REPORT_FILE}
-echo "${CLANGPP}" >> ${REPORT_FILE}
-${CLANGPP} --version >> ${REPORT_FILE}
-echo "" >> ${REPORT_FILE}
+# echo "${GCC}" >> ${REPORT_FILE}
+# ${GCC} --version >> ${REPORT_FILE}
+# echo "${CLANGPP}" >> ${REPORT_FILE}
+# ${CLANGPP} --version >> ${REPORT_FILE}
+# echo "" >> ${REPORT_FILE}

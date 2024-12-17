@@ -51,8 +51,8 @@ $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
 首先，在triton-cpu目录下，git apply根目录下的triton-cpu-0001-RISCV.patch（这个patch涉及的重要改动之一是将triton中间文件的生成路径从.triton/cache里改到里特定的位置）。
 
 然后运行下面指令，在本地构建出elf文件，随后拷贝到远程RISC-V机器上运行后再拷贝回本地，最后生成性能评测报告。
+RISC-V平台下的执行步骤：
 ```
-$ cd ..
 $ cd benchmarks
 $ ./build.sh
 $ ./copy_to_remote.sh # 需要修改REMOTE的ip地址和文件路径
@@ -67,4 +67,13 @@ $ <用ssh远程登录REMOTE的ip地址>
 // 回到当前目录
 $ ./copy_remote_back.sh # 需要修改REMOTE的ip地址和文件路径
 $ ./report.sh # 将性能评测报告保存到"benchmarks/build/report.xls"中
+```
+
+X86平台下的执行步骤：
+```
+$ ./build-x86.sh
+$ cp run.sh ./build
+$ cd build
+$ ./run.sh
+$ ./report.sh
 ```
