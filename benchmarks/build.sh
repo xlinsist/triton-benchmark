@@ -13,7 +13,7 @@ PYC="python"
 TRITON_PLUGIN_DIRS=${DIR}/triton-cpu
 KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 
-CLANGPP="${LLVM_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
+CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
         --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
         --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
         -fvectorize -fslp-vectorize -O3"
@@ -30,7 +30,9 @@ OBJDUMP="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-objdump"
 
 # build support library
 build_support_lib() {
-  ${COMPILER} -fPIC -I ${DIR}/include -c ${SRC_DIR}/support/*.cpp -o ${OBJ_DIR}/support.o
+  echo "building support lib..."
+  ${COMPILER} -fPIC -I ${DIR}/include -c ${SRC_DIR}/support/support.cpp -o ${OBJ_DIR}/support.o
+  ${OBJDUMP} -d ${OBJ_DIR}/support.o &> ${OBJ_DIR}/support.s
   ${AR} rcs ${LIB_DIR}/libsupport.a ${OBJ_DIR}/support.o
 }
 
@@ -38,8 +40,9 @@ build_support_lib() {
 build_c_kernel_lib() {
   for kernel in ${C_KERNELS[@]}; do
     name=`basename ${kernel} .cpp`
-    echo ${kernel}
+    echo "building c kernel ${kernel}..."
     ${COMPILER} -fPIC -I ${DIR}/include -c ${kernel} -fopenmp -o ${OBJ_DIR}/${name}.o
+    ${OBJDUMP} -d ${OBJ_DIR}/${name}.o &> ${OBJ_DIR}/${name}.s
   done
 
   find ${OBJ_DIR} -not -name "support.o" -name "*.o" | xargs ${AR} rcs ${LIB_DIR}/libkernel.a
@@ -53,7 +56,7 @@ build_triton_kernel_lib() {
     KERNEL_AUX_FILE_DIR=${BUILD_DIR}/aux/src/${name}
     mkdir -p ${KERNEL_AUX_FILE_DIR}
 
-    echo ${kernel}
+    echo "building triton kernel ${kernel}..."
     # compile triton kernel: .py --> .llir + launcher.cpp
     KERNEL_LAUNCHER_INCLUDE_DIR=${KERNEL_LAUNCHER_INCLUDE_DIR} KERNEL_AUX_FILE_DIR=${KERNEL_AUX_FILE_DIR} ${PYC} ${kernel}
 
@@ -66,7 +69,8 @@ build_triton_kernel_lib() {
       kernel_name=`basename ${kernel_ir} .llir`
       echo ${kernel_ir}
       ${AS} -o ${OBJ_DIR}/${kernel_name}.bc ${kernel_ir}
-      ${COMPILER} -c -save-temps=obj ${OBJ_DIR}/${kernel_name}.bc -o ${OBJ_DIR}/${kernel_name}.o
+      ${COMPILER} -c ${OBJ_DIR}/${kernel_name}.bc -o ${OBJ_DIR}/${kernel_name}.o
+      ${OBJDUMP} -d ${OBJ_DIR}/${kernel_name}.o &> ${OBJ_DIR}/${kernel_name}.s
     done
 
     # build triton laucher: launcher.cpp --> .o
@@ -78,6 +82,7 @@ build_triton_kernel_lib() {
         -c ${kernel_launcher} \
         -fopenmp \
         -o ${OBJ_DIR}/${launcher_name}.o
+      ${OBJDUMP} -d ${OBJ_DIR}/${launcher_name}.o &> ${OBJ_DIR}/${launcher_name}.s
     done
   done
 
@@ -142,14 +147,12 @@ build_driver(){
 
   for main in ${DRIVERS[@]}; do
     name=`basename ${main} .cpp`
-    echo ${main}
+    echo "generating elf of ${main}..."
 
     KERNEL_BIN_DIR=${BIN_DIR}/${name}/
     mkdir -p ${KERNEL_BIN_DIR}
 
-    # Compile driver
-    # .elf suffix to avoid scp problem(same name dir and kernel)
-  ${COMPILER} \
+    ${COMPILER} \
       "${main}" \
       -I "${DIR}/include" \
       -I "${KERNEL_LAUNCHER_INCLUDE_DIR}" \
@@ -215,6 +218,6 @@ echo "building golden using clang..."
 build_driver clang
 echo "build with clang finished."
 
-echo "building triton kernel..."
+echo "building triton..."
 build_driver triton
 echo "build with triton finished."
