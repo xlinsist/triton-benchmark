@@ -1,0 +1,110 @@
+From 254c7d8c4075a260ec5ce2143ad9183d7b4e593e Mon Sep 17 00:00:00 2001
+From: wenhu1024 <1340773297@qq.com>
+Date: Wed, 18 Dec 2024 19:07:03 +0800
+Subject: [PATCH] [ventus]add ventus_kernel for opencl kernel function
+
+---
+ llvm/include/llvm/AsmParser/LLToken.h         | 1 +
+ llvm/include/llvm/IR/CallingConv.h            | 3 +++
+ llvm/lib/AsmParser/LLLexer.cpp                | 1 +
+ llvm/lib/AsmParser/LLParser.cpp               | 2 ++
+ llvm/lib/IR/AsmWriter.cpp                     | 1 +
+ mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td | 5 +++--
+ 6 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/llvm/include/llvm/AsmParser/LLToken.h b/llvm/include/llvm/AsmParser/LLToken.h
+index 178c911120b4..2f7a403870a1 100644
+--- a/llvm/include/llvm/AsmParser/LLToken.h
++++ b/llvm/include/llvm/AsmParser/LLToken.h
+@@ -157,6 +157,7 @@ enum Kind {
+   kw_ptx_device,
+   kw_spir_kernel,
+   kw_spir_func,
++  kw_ventus_kernel,
+   kw_x86_64_sysvcc,
+   kw_win64cc,
+   kw_anyregcc,
+diff --git a/llvm/include/llvm/IR/CallingConv.h b/llvm/include/llvm/IR/CallingConv.h
+index 55e32028e3ed..0631fc679096 100644
+--- a/llvm/include/llvm/IR/CallingConv.h
++++ b/llvm/include/llvm/IR/CallingConv.h
+@@ -270,6 +270,9 @@ namespace CallingConv {
+     /// Preserve X1-X15, X19-X29, SP, Z0-Z31, P0-P15.
+     AArch64_SME_ABI_Support_Routines_PreserveMost_From_X1 = 111,
+ 
++    /// Used for VENTUS code object kernels.
++    VENTUS_KERNEL = 112,
++    
+     /// The highest possible ID. Must be some 2^k - 1.
+     MaxID = 1023
+   };
+diff --git a/llvm/lib/AsmParser/LLLexer.cpp b/llvm/lib/AsmParser/LLLexer.cpp
+index 1b8e033134f5..9fa4e9dfdf72 100644
+--- a/llvm/lib/AsmParser/LLLexer.cpp
++++ b/llvm/lib/AsmParser/LLLexer.cpp
+@@ -691,6 +691,7 @@ lltok::Kind LLLexer::LexIdentifier() {
+   KEYWORD(sync);
+   KEYWORD(async);
+ 
++  KEYWORD(ventus_kernel);
+ #define GET_ATTR_NAMES
+ #define ATTRIBUTE_ENUM(ENUM_NAME, DISPLAY_NAME) \
+   KEYWORD(DISPLAY_NAME);
+diff --git a/llvm/lib/AsmParser/LLParser.cpp b/llvm/lib/AsmParser/LLParser.cpp
+index dd72d46f5d9a..cd34a829b28f 100644
+--- a/llvm/lib/AsmParser/LLParser.cpp
++++ b/llvm/lib/AsmParser/LLParser.cpp
+@@ -2206,6 +2206,7 @@ void LLParser::parseOptionalDLLStorageClass(unsigned &Res) {
+ ///   ::= 'graalcc'
+ ///   ::= 'riscv_vector_cc'
+ ///   ::= 'cc' UINT
++///   ::= 'ventus_kernel'
+ ///
+ bool LLParser::parseOptionalCallingConv(unsigned &CC) {
+   switch (Lex.getKind()) {
+@@ -2241,6 +2242,7 @@ bool LLParser::parseOptionalCallingConv(unsigned &CC) {
+   case lltok::kw_ptx_kernel:     CC = CallingConv::PTX_Kernel; break;
+   case lltok::kw_ptx_device:     CC = CallingConv::PTX_Device; break;
+   case lltok::kw_spir_kernel:    CC = CallingConv::SPIR_KERNEL; break;
++  case lltok::kw_ventus_kernel:  CC = CallingConv::VENTUS_KERNEL; break;
+   case lltok::kw_spir_func:      CC = CallingConv::SPIR_FUNC; break;
+   case lltok::kw_intel_ocl_bicc: CC = CallingConv::Intel_OCL_BI; break;
+   case lltok::kw_x86_64_sysvcc:  CC = CallingConv::X86_64_SysV; break;
+diff --git a/llvm/lib/IR/AsmWriter.cpp b/llvm/lib/IR/AsmWriter.cpp
+index f8183774f405..580eaeb9d260 100644
+--- a/llvm/lib/IR/AsmWriter.cpp
++++ b/llvm/lib/IR/AsmWriter.cpp
+@@ -340,6 +340,7 @@ static void PrintCallingConv(unsigned cc, raw_ostream &Out) {
+   case CallingConv::Win64:         Out << "win64cc"; break;
+   case CallingConv::SPIR_FUNC:     Out << "spir_func"; break;
+   case CallingConv::SPIR_KERNEL:   Out << "spir_kernel"; break;
++  case CallingConv::VENTUS_KERNEL:    Out << "ventus_kernel"; break;
+   case CallingConv::Swift:         Out << "swiftcc"; break;
+   case CallingConv::SwiftTail:     Out << "swifttailcc"; break;
+   case CallingConv::X86_INTR:      Out << "x86_intrcc"; break;
+diff --git a/mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td b/mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td
+index 4a43c1690339..acbcaae6ada2 100644
+--- a/mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td
++++ b/mlir/include/mlir/Dialect/LLVMIR/LLVMEnums.td
+@@ -251,7 +251,8 @@ def CConvAMDGPU_Gfx : LLVM_EnumAttrCase<"AMDGPU_Gfx", "amdgpu_gfxcc",
+                                         "AMDGPU_Gfx", 100>;
+ def CConvM68k_INTR : LLVM_EnumAttrCase<"M68k_INTR", "m68k_intrcc", "M68k_INTR",
+                                        101>;
+-
++def CConvVENTUS_KERNEL : LLVM_EnumAttrCase<"VENTUS_KERNEL", "ventus_kernelcc",
++                                         "VENTUS_KERNEL", 112>;
+ def CConvEnum : LLVM_CEnumAttr<
+     "CConv",
+     "::llvm::CallingConv",
+@@ -267,7 +268,7 @@ def CConvEnum : LLVM_CEnumAttr<
+      CConvAMDGPU_VS, CConvAMDGPU_GS, CConvAMDGPU_CS, CConvAMDGPU_KERNEL,
+      CConvX86_RegCall, CConvAMDGPU_HS, CConvMSP430_BUILTIN, CConvAMDGPU_LS,
+      CConvAMDGPU_ES, CConvAArch64_VectorCall, CConvAArch64_SVE_VectorCall,
+-     CConvWASM_EmscriptenInvoke, CConvAMDGPU_Gfx, CConvM68k_INTR
++     CConvWASM_EmscriptenInvoke, CConvAMDGPU_Gfx, CConvM68k_INTR, CConvVENTUS_KERNEL
+     ]> {
+   let cppNamespace = "::mlir::LLVM::cconv";
+ }
+-- 
+2.34.1
+
