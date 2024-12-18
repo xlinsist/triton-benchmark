@@ -1,5 +1,5 @@
 From 254c7d8c4075a260ec5ce2143ad9183d7b4e593e Mon Sep 17 00:00:00 2001
-From: wenhu1024 <1340773297@qq.com>
+From: wenhu1024 <wenhu1024@github.com>
 Date: Wed, 18 Dec 2024 19:07:03 +0800
 Subject: [PATCH] [ventus]add ventus_kernel for opencl kernel function
 
