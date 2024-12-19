@@ -1,7 +1,6 @@
-# Refer https://iree.dev/building-from-source/getting-started/#optional-components to build IREE from source with CUDA enabled.
+# Refer to https://iree.dev/building-from-source/getting-started/#optional-components to build IREE from source with CUDA enabled
 # Commit id of IREE: 10e5bbbed2
 IREE_TOOL_CHAINS := /home/zhouxulin/intern/iree/iree-build/tools
-IREE_E2E_MATMUL_PATH := /home/zhouxulin/intern/iree/tests/e2e/matmul
 
 log-e2e.mlir: matmul.mlir
 	@-exec > log-e2e.mlir 2>&1; \

@@ -75,5 +75,6 @@ $ ./build-x86.sh
 $ cp run.sh ./build
 $ cd build
 $ ./run.sh
+$ cd ..
 $ ./report.sh
 ```
