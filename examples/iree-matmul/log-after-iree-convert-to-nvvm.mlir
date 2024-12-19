@@ -1,4 +1,4 @@
-// Extract from ./log-e2e.mlir
+// Extracted from ./log-e2e.mlir
 
 // -----// IR Dump After ConvertToNVVMPass (iree-convert-to-nvvm) //----- //
 module {
