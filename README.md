@@ -1,12 +1,7 @@
 # triton-benchmark
 
 ## examples使用示例
-以vector-add为例，将Triton编译器里的中间表示单独拎出来做手动下降（而不是用Triton编译器后端自动下降），最终得到LLVM IR dialect的执行步骤如下：
-```
-$ cd examples/vectoradd
-$ make tttcir-lowering
-```
-更多示例见benchmarks目录下的[README](./examples/README.md)。
+见examples目录下子文件夹里的makefile文件。
 
 ## benchmarks使用示例
  7个AI算子分别在1核、4核和8核，采用gcc、clang和triton，在RISC-V CPU（SpacemiT Muse Pi）上的执行结果如下，执行步骤见benchmarks目录下的[README](./benchmarks/README.md)。
