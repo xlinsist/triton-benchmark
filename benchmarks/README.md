@@ -48,7 +48,7 @@ $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
 ```
 
 ## 执行步骤
-首先，在triton-cpu目录下，git apply根目录下的triton-cpu-0001-RISCV.patch（这个patch涉及的重要改动之一是将triton中间文件的生成路径从.triton/cache里改到里特定的位置）。
+首先，在triton-cpu目录下，git apply根目录下的triton-cpu-0001-RISCV.patch（这个patch涉及的重要改动之一是将triton中间文件的生成路径从.triton/cache里改到里特定的位置）和triton-cpu-0002-Autotuning.patch。
 
 然后运行下面指令，在本地构建出elf文件，随后拷贝到远程RISC-V机器上运行后再拷贝回本地，最后生成性能评测报告。
 RISC-V平台下的执行步骤：
@@ -74,6 +74,7 @@ X86平台下的执行步骤：
 $ ./build-x86.sh
 $ cp run.sh ./build
 $ cd build
+$ export LD_LIBRARY_PATH=<libomp.so所在的某个lib目录> # 比如，export LD_LIBRARY_PATH=/home/zhouxulin/intern/buddy-mlir/llvm/build/lib:$LD_LIBRARY_PATH
 $ ./run.sh
 $ cd ..
 $ ./report.sh
