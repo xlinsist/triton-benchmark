@@ -4,6 +4,8 @@
 # Set up toolchain environment variables. Make your changes here if you need
 ################################################################################
 
+PLATFORM="x86"
+
 DIR=`dirname $0`
 SRC_DIR=${DIR}/src
 BUILD_DIR=${DIR}/build
@@ -15,13 +17,27 @@ PYC="python"
 TRITON_PLUGIN_DIRS=${DIR}/triton-cpu
 KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 
-CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
-        --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
-        --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
-        -fvectorize -fslp-vectorize -O3"
-GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
-    -march=rv64gcv_zvl256b -mabi=lp64d -O3"
-OBJDUMP="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-objdump"
+case $PLATFORM in
+    x86)
+      CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ -march=native -fvectorize -fslp-vectorize -O3"
+      GCC_BUILD_DIR=/usr
+      GCC="${GCC_BUILD_DIR}/bin/g++ -march=native -O3"
+      OBJDUMP="${GCC_BUILD_DIR}/bin/objdump"
+      ;;
+    rv)
+      CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
+              --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
+              --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
+              -fvectorize -fslp-vectorize -O3"
+      GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
+          -march=rv64gcv_zvl256b -mabi=lp64d -O3"
+      OBJDUMP="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-objdump"
+      ;;
+    ?*)
+      echo "Unknwon option"
+      exit -1
+      ;;
+esac
 
 ################################################################################
 # Core functions for building. No need to modify code here
@@ -94,9 +110,10 @@ create_dir_hierarchy(){
   mkdir -p ${LIB_DIR}
   mkdir -p ${BIN_DIR}
   mkdir -p ${OBJ_DIR}
-  # Prepare openmp lib on RISC-V
-  cp  ./openmp-sysroot/lib/* ${LIB_DIR}
-}·
+  if [ "${PLATFORM}" == "rv" ]; then
+    cp  ./openmp-sysroot/lib/* ${LIB_DIR}
+  fi
+}
 
 build_driver(){
   case $1 in
@@ -177,14 +194,14 @@ build_driver(){
 ### FIXME: Choose which kernels should be compiled
 # Array of "c_kernel triton_kernel driver_path" entries
 drivers=(
-  "${SRC_DIR}/c/correlation.cpp ${SRC_DIR}/triton/correlation.py ${SRC_DIR}/main/correlation.cpp"
-  "${SRC_DIR}/c/layernorm.cpp ${SRC_DIR}/triton/layernorm.py ${SRC_DIR}/main/layernorm.cpp"
+  # "${SRC_DIR}/c/correlation.cpp ${SRC_DIR}/triton/correlation.py ${SRC_DIR}/main/correlation.cpp"
+  # "${SRC_DIR}/c/layernorm.cpp ${SRC_DIR}/triton/layernorm.py ${SRC_DIR}/main/layernorm.cpp"
   "${SRC_DIR}/c/matmul.cpp ${SRC_DIR}/triton/matmul.py ${SRC_DIR}/main/matmul.cpp"
-  "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp"
-  "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp"
-  "${SRC_DIR}/c/dropout.cpp ${SRC_DIR}/triton/dropout.py ${SRC_DIR}/main/dropout.cpp"
-  "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp"
-  "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp"
+  # "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp"
+  # "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp"
+  # "${SRC_DIR}/c/dropout.cpp ${SRC_DIR}/triton/dropout.py ${SRC_DIR}/main/dropout.cpp"
+  # "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp"
+  # "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp"
 )
 
 ### FIXME: Choose which kernels should be compiled
@@ -217,6 +234,6 @@ echo "building golden using clang..."
 build_driver clang
 echo "build with clang finished."
 
-echo "building triton..."
-build_driver triton
-echo "build with triton finished."
+# echo "building triton..."
+# build_driver triton
+# echo "build with triton finished."

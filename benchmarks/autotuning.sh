@@ -4,6 +4,14 @@
 # Set up toolchain environment variables. Make your changes here if you need
 ################################################################################
 
+PLATFORM="x86"
+
+# Default clean build directory
+DO_CLEAN="--no-clean"
+
+# Compilation threads
+MAX_MULTITHREADING=8
+
 DIR=`dirname $0`
 SRC_DIR=${DIR}/src
 BUILD_DIR=${DIR}/build
@@ -15,16 +23,27 @@ PYC="python"
 TRITON_PLUGIN_DIRS=${DIR}/triton-cpu
 KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 
-CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ -march=native -fvectorize -fslp-vectorize -O3"
-GCC_BUILD_DIR=/usr
-GCC="${GCC_BUILD_DIR}/bin/g++ -march=native -O3"
-OBJDUMP="${GCC_BUILD_DIR}/bin/objdump"
-
-# Compilation threads
-MAX_MULTITHREADING=8
-
-# Default clean build directory
-DO_CLEAN="--no-clean"
+case $PLATFORM in
+    x86)
+      CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ -march=native -fvectorize -fslp-vectorize -O3"
+      GCC_BUILD_DIR=/usr
+      GCC="${GCC_BUILD_DIR}/bin/g++ -march=native -O3"
+      OBJDUMP="${GCC_BUILD_DIR}/bin/objdump"
+      ;;
+    rv)
+      CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
+              --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
+              --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
+              -fvectorize -fslp-vectorize -O3"
+      GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
+          -march=rv64gcv_zvl256b -mabi=lp64d -O3"
+      OBJDUMP="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-objdump"
+      ;;
+    ?*)
+      echo "Unknwon option"
+      exit -1
+      ;;
+esac
 
 ################################################################################
 # User interface. No need to modify code here
@@ -90,6 +109,9 @@ create_dir_hierarchy(){
   mkdir -p ${LIB_DIR}
   mkdir -p ${BIN_DIR}
   mkdir -p ${OBJ_DIR}
+  if [ "${PLATFORM}" == "rv" ]; then
+    cp  ./openmp-sysroot/lib/* ${LIB_DIR}
+  fi
 }
 
 # build triton kernel
@@ -190,9 +212,9 @@ build_triton_driver() {
 drivers=(
   # "triton/layernorm.py main/layernorm.cpp _layer_norm_fwd_fused"
   # "triton/layernorm.py main/layernorm.cpp _layer_norm_bwd_fused"
-  "triton/correlation.py main/correlation.cpp correlation_kernel"
+  # "triton/correlation.py main/correlation.cpp correlation_kernel"
   # "triton/softmax.py main/softmax_kernel.cpp softmax_kernel"
-  # "triton/matmul.py main/matmul.cpp matmul_kernel"
+  "triton/matmul.py main/matmul.cpp matmul_kernel"
   # "triton/rope.py main/rope.cpp rope_kernel"
   # "triton/dropout.py main/dropout.cpp dropout_kernel"
   # "triton/resize.py main/resize.cpp resize_kernel"
