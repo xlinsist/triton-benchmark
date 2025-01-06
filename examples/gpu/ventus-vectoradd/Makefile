@@ -1,3 +1,5 @@
+# The commit id of triton used here is `83cf4362bd87c74bf57e79a7e213b4301fa3f25c`.
+# The corresponding commit id of llvm-project is `a4c3683b665c6ac875b4821f5c6a881fdf5fef70`.
 LLVM_BUILD := ../../../../llvm-project/build
 MLIR_TRANSLATE := ${LLVM_BUILD}/bin/mlir-translate
 MLIR_OPT := ${LLVM_BUILD}/bin/mlir-opt
@@ -31,6 +33,7 @@ ${LLVM_DIALECT_FILE}: ${MLIR_FILE}
 
 # Rules for generating LLVM IR file
 # Note: use sed to add 'ventus_kernel'
+
 ${LL_FILE}: ${LLVM_DIALECT_FILE}
 	@${MLIR_TRANSLATE} -mlir-to-llvmir $< -o $@
 	@sed -i 's/define void @vectorAdd/define ventus_kernel void @vectorAdd/' $@
@@ -47,12 +50,15 @@ ${OUTPUT_FILE}: ${OBJ_FILE}
 get-vecadd-riscv: ${OUTPUT_FILE}
 
 # Target for running RISC-V executable
+# Note: Before executing run-vecadd-riscv, follow these steps:
+# 1. Replace `ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/test.cpp` with the `test.cpp` file provided in the current directory.
+# 2. Navigate to the driver directory and complete the build process as described in the README file.
 run-vecadd-riscv: ${OUTPUT_FILE}
 	@cp $< ${VENTUS_SPIKE_BUILD}
 	@${VENTUS_SPIKE_BUILD}/spike_test
 
 # Clean up generated files
 clean:
-	rm -f ${LLVM_DIALECT_FILE} ${LL_FILE} ${OBJ_FILE} ${OUTPUT_FILE} vecadd.riscv.log ${LLVM_DIALECT_FROM_GPU_FILE}
+	rm -f ${LLVM_DIALECT_FILE} ${LL_FILE} ${OBJ_FILE} ${OUTPUT_FILE} ${LLVM_DIALECT_FROM_GPU_FILE} vecadd.riscv.log
 
-.PHONY: get-vecadd-riscv run-vecadd-riscv clean get-llvm-dialect-from-gpu
+.PHONY: get-vecadd-riscv run-vecadd-riscv clean
