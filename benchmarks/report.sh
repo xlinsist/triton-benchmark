@@ -14,7 +14,8 @@ BENCHMARK=${DIR}/build/bin
 
 REPORT_FILE=${DIR}/build/report.xls
 
-MODE="Accuracy"
+# MODE="Accuracy"
+MODE="Benchmark"
 
 # | #####  softmax_kernel kernel performance ##### |
 # | shape (RxCxRUN_COUNT) | gcc_T1  | zcc_T1  | triton_T1 | gcc_T4  | zcc_T4  | triton_T4 | gcc_T8   | zcc_T8   | triton_T8 |

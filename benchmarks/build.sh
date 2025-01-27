@@ -155,7 +155,8 @@ build_driver(){
 
   build_support_lib
 
-  MODE="Accuracy"
+  # MODE="Accuracy"
+  MODE="Benchmark"
   # Benchmark mode don't check accurary since io operation is slow
   if [ "${MODE}" == "Accuracy" ]; then
     COMPILER+=" -DCHECK_ACCURACY "
@@ -234,6 +235,8 @@ echo "building golden using clang..."
 build_driver clang
 echo "build with clang finished."
 
-# echo "building triton..."
+echo "building triton..."
+# Enable autotuning
 # build_driver triton
-# echo "build with triton finished."
+./autotuning.sh
+echo "build with triton finished."

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-MODE="Accuracy"
+# MODE="Accuracy"
+MODE="Benchmark"
 
 DIR=`dirname $0`
 

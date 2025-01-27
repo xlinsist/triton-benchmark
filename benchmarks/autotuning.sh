@@ -172,20 +172,19 @@ build_triton_driver() {
       kernel_name=`basename ${kernel_ir} .llir`
 
       ${AS} -o ${KERNEL_AUX_FILE_DIR}_${block_shape}/${kernel_name}.bc ${kernel_ir}
-      ${COMPILER} -c ${KERNEL_AUX_FILE_DIR}_${block_shape}/${kernel_name}.bc -o ${OBJ_DIR}/${kernel_name}.o
-      ${OBJDUMP} -d ${OBJ_DIR}/${name}_$1_${block_shape}/${kernel_name}.o &> ${KERNEL_AUX_FILE_DIR}_${block_shape}/${kernel_name}.s
-      # ${ZCC} -S -x ir ${kernel_ir} -mllvm --riscv-disable-rvv-fixedlen=false -mrvv-vector-bits=256 -o ${KERNEL_AUX_FILE_DIR}_${block_shape}/${kernel_name}.s
-      # ${ZCC} -c -o ${OBJ_DIR}/${name}_$1_${block_shape}/${kernel_name}.o ${KERNEL_AUX_FILE_DIR}_${block_shape}/${kernel_name}.s
+      ${COMPILER} -c ${KERNEL_AUX_FILE_DIR}_${block_shape}/${kernel_name}.bc -o ${OBJ_DIR}/${name}_$1_${block_shape}/${kernel_name}.o
+      ${OBJDUMP} -d ${OBJ_DIR}/${name}_$1_${block_shape}/${kernel_name}.o &> ${OBJ_DIR}/${name}_$1_${block_shape}/${kernel_name}.s
     done
 
     # build triton laucher: launcher.cpp --> .o
     for kernel_launcher in ${tunning_dir}/*.cpp; do
       launcher_name=`basename ${kernel_launcher} .cpp`
       ${COMPILER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -c ${kernel_launcher} -fopenmp -o ${OBJ_DIR}/${name}_$1_${block_shape}/${launcher_name}.o
+      ${OBJDUMP} -d ${OBJ_DIR}/${name}_$1_${block_shape}/${launcher_name}.o &> ${OBJ_DIR}/${name}_$1_${block_shape}/${launcher_name}.s
     done
 
     find ${OBJ_DIR}/${name}_$1_${block_shape}/ -not -name "support.o"  -name "*.o" | xargs ${AR} rcs ${LIB_DIR}/libkernel_$1_${block_shape}.a
-    ${AR} rcs ${LIB_DIR}/libkernel_$1_${block_shape}.a ${OBJ_DIR}/$1.o
+    ${AR} rcs ${LIB_DIR}/libkernel_$1_${block_shape}.a ${OBJ_DIR}/${name}_$1_${block_shape}/${kernel_name}.o
 
     # Compile driver
     # .elf suffix to avoid scp problem(same name dir and kernel)
