@@ -10,9 +10,9 @@ USE_GPU = False
 
 def get_matmul_kernel_autotune_config():
     configs=[]
-    for BLOCK_SIZE_M in [4, 8, 16, 32, 64]:
-      for BLOCK_SIZE_N in [4, 8, 16, 32, 64]:
-        for BLOCK_SIZE_K in [4, 8, 16, 32, 64]:
+    for BLOCK_SIZE_M in [16, 32, 64]:
+      for BLOCK_SIZE_N in [16, 32, 64]:
+        for BLOCK_SIZE_K in [16, 32, 64]:
             configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}))
 
     if(os.getenv("ENABLE_AUTOTUNING") == "matmul_kernel"):
