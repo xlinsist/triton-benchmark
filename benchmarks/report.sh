@@ -30,7 +30,7 @@ echo "Report performace to ${REPORT_FILE}"
 # STAT_KEYWORD=(C Triton)
 
 COMPILER=(gcc clang triton)
-THREADS=(1 4 8)
+THREADS=(1 8 32)
 
 TRITON_KERNELS=`ls ${BENCHMARK}/triton/`
 # TRITON_KERNELS=layernorm

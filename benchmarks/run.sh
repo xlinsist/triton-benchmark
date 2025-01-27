@@ -7,7 +7,7 @@ DIR=`dirname $0`
 
 BENCHMARK=${DIR}/bin/
 
-THREAD=(1 4 8)
+THREAD=(1 8 32)
 
 # COMPILER=`ls ${BENCHMARK}`
 COMPILER=(triton gcc clang)
