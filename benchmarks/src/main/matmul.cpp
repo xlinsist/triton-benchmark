@@ -81,8 +81,6 @@ int main(int argc, char *argv[]) {
   // triton kernel
 #ifdef TRITON_KERNEL_ENABLE
   high_resolution_clock::time_point beginTime = high_resolution_clock::now();
-  int matmul_kernel_BLOCK_SIZE_M = 4;
-  int matmul_kernel_BLOCK_SIZE_N = 4;
   for (int i = 0; i < RUN_COUNT; i++) {
     matmul_kernel_omp(ceil(1.0 * M / matmul_kernel_BLOCK_SIZE_M) *
                           ceil(1.0 * N / matmul_kernel_BLOCK_SIZE_N),
