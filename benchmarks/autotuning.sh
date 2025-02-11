@@ -114,6 +114,13 @@ create_dir_hierarchy(){
   fi
 }
 
+# MODE="Accuracy"
+MODE="Benchmark"
+# Benchmark mode don't check accurary since io operation is slow
+if [ "${MODE}" == "Accuracy" ]; then
+  COMPILER+=" -DCHECK_ACCURACY "
+fi
+
 # build triton kernel
 # build_triton_driver + ${ENABLE_AUTOTUNING}
 build_triton_driver() {
@@ -188,9 +195,7 @@ build_triton_driver() {
 
     # Compile driver
     # .elf suffix to avoid scp problem(same name dir and kernel)
-    # Always check accurary
-    # echo "${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -L ${LIB_DIR} -fopenmp -lkernel_$1_${block_shape} -lsupport -latomic -std=c++17 -D${KERNEL_ENABLE} -DCHECK_ACCURACY -fPIC -o ${KERNEL_BIN_DIR}/${driver_name}_$1_${block_shape}.elf"
-    ${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -L ${LIB_DIR} -fopenmp -lkernel_$1_${block_shape} -lsupport -latomic -std=c++17 -D${KERNEL_ENABLE} -DCHECK_ACCURACY -fPIC -o ${KERNEL_BIN_DIR}/${driver_name}_$1_${block_shape}.elf
+    ${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -L ${LIB_DIR} -fopenmp -lkernel_$1_${block_shape} -lsupport -latomic -std=c++17 -D${KERNEL_ENABLE} -fPIC -o ${KERNEL_BIN_DIR}/${driver_name}_$1_${block_shape}.elf
     ${OBJDUMP} -d ${KERNEL_BIN_DIR}/${driver_name}_$1_${block_shape}.elf &> ${KERNEL_BIN_DIR}/${driver_name}_$1_${block_shape}.elf.s
 
       echo >&6
@@ -212,8 +217,8 @@ drivers=(
   # "triton/layernorm.py main/layernorm.cpp _layer_norm_fwd_fused"
   # "triton/layernorm.py main/layernorm.cpp _layer_norm_bwd_fused"
   # "triton/correlation.py main/correlation.cpp correlation_kernel"
-  # "triton/softmax.py main/softmax_kernel.cpp softmax_kernel"
-  "triton/matmul.py main/matmul.cpp matmul_kernel"
+  "triton/softmax.py main/softmax_kernel.cpp softmax_kernel"
+  # "triton/matmul.py main/matmul.cpp matmul_kernel"
   # "triton/rope.py main/rope.cpp rope_kernel"
   # "triton/dropout.py main/dropout.cpp dropout_kernel"
   # "triton/resize.py main/resize.cpp resize_kernel"

@@ -28,7 +28,8 @@ def parse_performance_data(file_path):
             method_info = columns[i + 1].strip()
             
             # 提取method, thread, and parameter
-            match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_matmul_kernel_(\d+_\d+_\d+))?', method_info)
+            # match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_matmul_kernel_(\d+_\d+_\d+))?', method_info) # for matmul
+            match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_softmax_kernel_(\d+_\d+))?', method_info) # for softmax
             if match:
                 method = match.group(1)
                 thread = int(match.group(2)[1:])  # 去掉"T"并转换为整数

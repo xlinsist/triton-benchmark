@@ -73,17 +73,10 @@ def naive_softmax(x):
 # memory operations properly if we want to handle any possible input shapes:
 
 def get_softmax_kernel_autotune_config():
-    configs = [
-        triton.Config({'BLOCK_SIZE': 1}),
-        triton.Config({'BLOCK_SIZE': 2}),
-        triton.Config({'BLOCK_SIZE': 4}),
-        triton.Config({'BLOCK_SIZE': 8}),
-        triton.Config({'BLOCK_SIZE': 16}),
-        triton.Config({'BLOCK_SIZE': 32}),
-        triton.Config({'BLOCK_SIZE': 64}),
-        triton.Config({'BLOCK_SIZE': 128}),
-        triton.Config({'BLOCK_SIZE': 256})
-    ]
+    configs = []
+    for BLOCK_SIZE in [16, 64, 256, 1024]:
+      for TILE_SIZE in [16, 64]:
+        configs.append(triton.Config({'BLOCK_SIZE': BLOCK_SIZE, 'TILE_SIZE': TILE_SIZE}))
     if(os.getenv("ENABLE_AUTOTUNING") == "softmax_kernel"):
       assert (len(configs) > 1), "Autotuning config size need be larger than 1"
       return configs
@@ -95,40 +88,51 @@ def get_softmax_kernel_autotune_config():
     configs=get_softmax_kernel_autotune_config(),
     key=[],
 )
+
 @triton.jit
-def softmax_kernel(output_ptr, input_ptr, input_row_stride, output_row_stride, n_cols, BLOCK_SIZE: tl.constexpr):
-    # The rows of the softmax are independent, so we parallelize across those
-    row_idx = tl.program_id(0)
-    # The stride represents how much we need to increase the pointer to advance 1 row
-    row_start_ptr = input_ptr + row_idx * input_row_stride
+def softmax_kernel(output_ptr, input_ptr, input_row_stride, output_row_stride, 
+                   n_cols, BLOCK_SIZE: tl.constexpr, TILE_SIZE: tl.constexpr):
+    row_idx = tl.program_id(0)  # 每个线程块处理一行
+    row_start_ptr = input_ptr + row_idx * input_row_stride  
+    output_row_start_ptr = output_ptr + row_idx * output_row_stride  
 
-    row_max = -float('inf')
-    for off in range(0, n_cols, BLOCK_SIZE):
-        col_offsets = off + tl.arange(0, BLOCK_SIZE)
-        row = tl.load(row_start_ptr + col_offsets, mask=col_offsets < n_cols, other=-float('inf'))
-        row_max = tl.maximum(row_max, tl.max(row, axis=0))
+    # 初始化 softmax 计算的最大值和总和
+    acc_max = -float('inf')
+    acc_sum = 0.0
 
-    # Write back output to DRAM
-    output_row_start_ptr = output_ptr + row_idx * output_row_stride
-    denominator = 0.0
-    for off in range(0, n_cols):
-        row = tl.load(row_start_ptr + off)
-        # Subtract maximum for numerical stability
-        row_minus_max = row - row_max
-        # Note that exponentiation in Triton is fast but approximate (i.e., think __expf in CUDA)
-        numerator = tl.exp(row_minus_max)
-        denominator += numerator
+    # 分块计算 max 值（全局归约）
+    for block_start in range(0, n_cols, BLOCK_SIZE):
+        for tile_start in range(0, BLOCK_SIZE, TILE_SIZE):
+            col_offsets = tile_start + tl.arange(0, TILE_SIZE)  
+            col_mask = (col_offsets + block_start) < n_cols  
+            input_ptrs = row_start_ptr + block_start + col_offsets
+            row = tl.load(input_ptrs, mask=col_mask, other=-float('inf'))
+            acc_max = tl.maximum(acc_max, tl.max(row, axis=0))  # 归约最大值
 
-        tl.store(output_row_start_ptr + off, numerator)
+    # 分块计算 sum(exp(row - max))（全局归约）
+    for block_start in range(0, n_cols, BLOCK_SIZE):
+        for tile_start in range(0, BLOCK_SIZE, TILE_SIZE):
+            col_offsets = tile_start + tl.arange(0, TILE_SIZE)  
+            col_mask = (col_offsets + block_start) < n_cols  
+            input_ptrs = row_start_ptr + block_start + col_offsets
+            row = tl.load(input_ptrs, mask=col_mask, other=-float('inf'))
+            row_minus_max = row - acc_max  # 减去全局最大值
+            numerator = tl.exp(row_minus_max)
+            acc_sum += tl.sum(numerator, axis=0)  # 归约 sum(exp)
 
+    # 计算 softmax 并写回
+    for block_start in range(0, n_cols, BLOCK_SIZE):
+        for tile_start in range(0, BLOCK_SIZE, TILE_SIZE):
+            col_offsets = tile_start + tl.arange(0, TILE_SIZE)  
+            col_mask = (col_offsets + block_start) < n_cols  
+            input_ptrs = row_start_ptr + block_start + col_offsets
+            output_ptrs = output_row_start_ptr + block_start + col_offsets
 
-
-    for off in range(0, n_cols, BLOCK_SIZE):
-        col_offsets = off + tl.arange(0, BLOCK_SIZE)
-        row = tl.load(output_row_start_ptr + col_offsets, mask=col_offsets < n_cols, other=-float('inf'))
-
-        softmax_output = row / denominator
-        tl.store(output_row_start_ptr + col_offsets, softmax_output, mask=col_offsets < n_cols)
+            row = tl.load(input_ptrs, mask=col_mask, other=-float('inf'))
+            row_minus_max = row - acc_max
+            numerator = tl.exp(row_minus_max)
+            softmax_output = numerator / acc_sum  # 归一化
+            tl.store(output_ptrs, softmax_output, mask=col_mask)
 
 
 # %%

@@ -110,6 +110,8 @@ done
 echo "" >> ${REPORT_FILE}
 echo "" >> ${REPORT_FILE}
 
+python ./plot_benchmark.py
+
 # echo "${GCC}" >> ${REPORT_FILE}
 # ${GCC} --version >> ${REPORT_FILE}
 # echo "${CLANGPP}" >> ${REPORT_FILE}
