@@ -73,8 +73,3 @@ $ ./run.sh
 $ cd ..
 $ ./report.sh
 ```
-
-## Autotuning
-Based on triton-cpu with the 0001-patch applied, the 0002-autotuning patch is added.
-
-The autotuning script only compiles the Triton kernel. If you need to compare data with the C kernel, you need to disable the Triton kernel compilation in the build script, first run build.sh, and then run autotuning.sh.
