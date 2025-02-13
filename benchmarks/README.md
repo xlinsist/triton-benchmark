@@ -43,7 +43,7 @@ $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
 ```
 
 ## 执行步骤
-首先，在triton-cpu目录下，git apply根目录下的triton-cpu-0001-RISCV.patch（这个patch涉及的重要改动之一是将triton中间文件的生成路径从.triton/cache里改到里特定的位置）。
+首先，在triton-cpu目录下，同时git apply根目录下patch路径中的triton-cpu-0001-RISCV.patch（这个patch涉及的重要改动之一是将triton中间文件的生成路径从.triton/cache里改到里特定的位置），以及triton-cpu-0002-Autotuning.patch。
 
 然后参考RISC-V平台下的执行步骤（在本地构建出elf文件，随后拷贝到远程RISC-V机器上运行后再拷贝回本地，最后生成性能评测报告）：
 ```
