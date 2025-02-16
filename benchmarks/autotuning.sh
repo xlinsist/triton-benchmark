@@ -26,9 +26,9 @@ KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 case $PLATFORM in
     x86)
       CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ -march=native -fvectorize -fslp-vectorize -O3"
-      GCC_BUILD_DIR=/usr
-      GCC="${GCC_BUILD_DIR}/bin/g++ -march=native -O3"
-      OBJDUMP="${GCC_BUILD_DIR}/bin/objdump"
+      GCC_X86_BUILD_DIR=/usr
+      GCC="${GCC_X86_BUILD_DIR}/bin/g++ -march=native -O3"
+      OBJDUMP="${GCC_X86_BUILD_DIR}/bin/objdump"
       ;;
     rv)
       CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
@@ -217,11 +217,11 @@ drivers=(
   # "triton/layernorm.py main/layernorm.cpp _layer_norm_fwd_fused"
   # "triton/layernorm.py main/layernorm.cpp _layer_norm_bwd_fused"
   # "triton/correlation.py main/correlation.cpp correlation_kernel"
-  "triton/softmax.py main/softmax_kernel.cpp softmax_kernel"
+  # "triton/softmax.py main/softmax_kernel.cpp softmax_kernel"
   # "triton/matmul.py main/matmul.cpp matmul_kernel"
   # "triton/rope.py main/rope.cpp rope_kernel"
   # "triton/dropout.py main/dropout.cpp dropout_kernel"
-  # "triton/resize.py main/resize.cpp resize_kernel"
+  "triton/resize.py main/resize.cpp resize_kernel"
   # "triton/warp.py main/warp.cpp warp_kernel"
 )
 

@@ -1,5 +1,10 @@
 import pandas as pd
 import re
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from pathlib import Path
 
 def parse_performance_data(file_path):
     # 读取文件
@@ -29,12 +34,13 @@ def parse_performance_data(file_path):
             
             # 提取method, thread, and parameter
             # match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_matmul_kernel_(\d+_\d+_\d+))?', method_info) # for matmul
-            match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_softmax_kernel_(\d+_\d+))?', method_info) # for softmax
+            # match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_softmax_kernel_(\d+_\d+))?', method_info) # for softmax
+            # match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_dropout_kernel_(\d+_\d+))?', method_info) # for dropout
+            match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_resize_kernel_(\d+))?', method_info) # for dropout
             if match:
                 method = match.group(1)
                 thread = int(match.group(2)[1:])  # 去掉"T"并转换为整数
                 parameter = match.group(3) if method == "triton" else ""
-                
                 # 添加到结果列表
                 results.append({
                     "shape": shape,
@@ -66,7 +72,6 @@ def find_best_triton_params(df):
     """
     # 筛选出 method 为 triton 的数据
     triton_df = df[df['method'] == 'triton']
-    
     # 按 shape 和 thread 分组，并找到 time 最小的行
     best_params = (
         triton_df.loc[triton_df.groupby(['shape', 'thread'])['time(s)'].idxmin()]
@@ -77,6 +82,42 @@ def find_best_triton_params(df):
     result_df = pd.concat([df, best_params[['shape', 'thread', 'parameter', 'time(s)', 'method']]], ignore_index=True)
     return result_df
 
+
+def plot_threads_bar_chart(input_csv):
+    # 读取 CSV 数据
+    df = pd.read_csv(input_csv)
+
+    # 筛选出 method 为 "triton_tuned" 的数据
+    df = df[df["method"] == "triton_tuned"]
+    # 只保留指定的 shape
+    shapes_to_keep = ["64,x100", "1024,x100", "16384,x100", "262144,x100"]
+    df = df[df["shape"].isin(shapes_to_keep)]
+    
+    # 按照指定顺序排序
+    df["shape"] = pd.Categorical(df["shape"], categories=shapes_to_keep, ordered=True)
+    df = df.sort_values("shape")
+
+    # 设置 Seaborn 样式
+    sns.set_theme(style="whitegrid")
+
+    # 画图
+    plt.figure(figsize=(12, 6))
+    ax = sns.barplot(data=df, x="shape", y="time(s)", hue="thread", palette="Set2")
+
+    # 设置图表信息
+    ax.set_xlabel("Shape", fontsize=12)
+    ax.set_ylabel("Time (s)", fontsize=12)
+    ax.set_title("Execution Time for Different Shapes and Threads", fontsize=14)
+    plt.xticks(rotation=45, ha="right")
+
+    # 保存图表
+    output_file = f"./build/bar_chart_triton_tuned.png"
+    plt.savefig(output_file, dpi=300, bbox_inches="tight")
+    print(f"Bar chart saved as {output_file}")
+
+    plt.close()
+
+
 # 使用示例
 if __name__ == "__main__":
     input_file = "./build/report.xls"  # 替换为你的文件路径
@@ -84,3 +125,4 @@ if __name__ == "__main__":
     result_df = find_best_triton_params(df)
     # print(result_df)
     result_df.to_csv("./build/performance_report.csv", index=False)
+    # plot_threads_bar_chart("./build/performance_report.csv")

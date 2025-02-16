@@ -20,9 +20,8 @@ KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
 case $PLATFORM in
     x86)
       CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ -march=native -fvectorize -fslp-vectorize -O3"
-      GCC_BUILD_DIR=/usr
-      GCC="${GCC_BUILD_DIR}/bin/g++ -march=native -O3"
-      OBJDUMP="${GCC_BUILD_DIR}/bin/objdump"
+      GCC="${GCC_X86_BUILD_DIR}/bin/g++ -march=native -O3"
+      OBJDUMP="${GCC_X86_BUILD_DIR}/bin/objdump"
       ;;
     rv)
       CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
@@ -198,10 +197,10 @@ drivers=(
   # "${SRC_DIR}/c/correlation.cpp ${SRC_DIR}/triton/correlation.py ${SRC_DIR}/main/correlation.cpp"
   # "${SRC_DIR}/c/layernorm.cpp ${SRC_DIR}/triton/layernorm.py ${SRC_DIR}/main/layernorm.cpp"
   # "${SRC_DIR}/c/matmul.cpp ${SRC_DIR}/triton/matmul.py ${SRC_DIR}/main/matmul.cpp"
-  "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp"
+  # "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp"
   # "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp"
   # "${SRC_DIR}/c/dropout.cpp ${SRC_DIR}/triton/dropout.py ${SRC_DIR}/main/dropout.cpp"
-  # "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp"
+  "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp"
   # "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp"
 )
 
