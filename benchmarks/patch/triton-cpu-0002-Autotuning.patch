@@ -1,15 +1,16 @@
- python/triton/runtime/autotuner.py | 50 +++++++++++++++++++++++---------------
- python/triton/runtime/jit.py       |  6 +++++
- third_party/cpu/backend/driver.py  | 25 ++++++++++++++-----
- 3 files changed, 55 insertions(+), 26 deletions(-)
+ python/triton/runtime/autotuner.py | 41 ++++++++++++++++++++------------------
+ python/triton/runtime/jit.py       | 10 ++++++++--
+ third_party/cpu/backend/driver.py  | 34 +++++++++++++++++++++++++------
+ 3 files changed, 58 insertions(+), 27 deletions(-)
 diff --git a/python/triton/runtime/autotuner.py b/python/triton/runtime/autotuner.py
-index c9833c94..a92c212a 100644
+index c9833c94..3f299dc4 100644
 --- a/python/triton/runtime/autotuner.py
 +++ b/python/triton/runtime/autotuner.py
-@@ -144,11 +144,19 @@ class Autotuner(KernelInterface):
+@@ -144,11 +144,20 @@ class Autotuner(KernelInterface):
          # augment meta-parameters with tunable ones
          current = dict(meta, **config.all_kwargs())
          full_nargs = {**self.nargs, **current}
++        
 +        # Add shape postfix to the generated directory
 +        # FIXME:
 +        TUNING_SHAPE_CONFIG=""
@@ -23,29 +24,29 @@ index c9833c94..a92c212a 100644
 -            if config.pre_hook:
 -                config.pre_hook(full_nargs)
 -            self.pre_hook(full_nargs)
-+            #if config.pre_hook:
-+            #    config.pre_hook(full_nargs)
-+            #self.pre_hook(full_nargs)
++            # if config.pre_hook:
++            #     config.pre_hook(full_nargs)
++            # self.pre_hook(full_nargs)
              try:
                  self.fn.run(
                      *args,
-@@ -161,10 +169,12 @@ class Autotuner(KernelInterface):
+@@ -161,10 +170,12 @@ class Autotuner(KernelInterface):
                      # Throw exception raised by `self.fn.run`
                      raise
  
 -            self.post_hook(full_nargs, exception=None)
 -
-+            #self.post_hook(full_nargs, exception=None)
-+#???#I DONT KNOW
++            # self.post_hook(full_nargs, exception=None)
++#不确定
          try:
 -            return self.do_bench(kernel_call, quantiles=(0.5, 0.2, 0.8))
 +            kernel_call()
-+            return [float("inf"), float("inf"), float("inf")]            
-+            #return self.do_bench(kernel_call, quantiles=(0.5, 0.2, 0.8))
++            return [float("inf"), float("inf"), float("inf")]
++            # return self.do_bench(kernel_call, quantiles=(0.5, 0.2, 0.8))
          except (OutOfResources, CompileTimeAssertionFailure, PTXASError) as e:
              if verbose:
                  print(f"Autotuning failed with {e}")
-@@ -196,20 +206,20 @@ class Autotuner(KernelInterface):
+@@ -196,20 +207,12 @@ class Autotuner(KernelInterface):
              config = self.cache[key]
          else:
              config = self.configs[0]
@@ -56,64 +57,72 @@ index c9833c94..a92c212a 100644
 -        if config.pre_hook is not None:
 -            full_nargs = {**self.nargs, **kwargs, **config.all_kwargs()}
 -            config.pre_hook(full_nargs)
--        ret = self.fn.run(
++        os.environ.pop('TUNING_SHAPE_CONFIG', None)
+         ret = self.fn.run(
 -            *args,
 -            **kwargs,
 -            **config.all_kwargs(),
 -        )
 -        self.nargs = None
 -        return ret
-+        # self.best_config = config
-+        # if os.getenv("TRITON_PRINT_AUTOTUNING", None) == "1" and not used_cached_result:
-+        #     print(f"Triton autotuning for function {self.base_fn.__name__} finished after "
-+        #           f"{self.bench_time:.2f}s; best config selected: {self.best_config};")
-+        # if config.pre_hook is not None:
-+        #     full_nargs = {**self.nargs, **kwargs, **config.all_kwargs()}
-+        #     config.pre_hook(full_nargs)
-+        # ret = self.fn.run(
-+        #     *args,
-+        #     **kwargs,
-+        #     **config.all_kwargs(),
-+        # )
-+        # self.nargs = None
-+        # return ret
++                        *args,
++                        **kwargs,
++                        **config.all_kwargs(),
++                    )
  
      def prune_configs(self, kwargs):
          pruned_configs = self.configs
 diff --git a/python/triton/runtime/jit.py b/python/triton/runtime/jit.py
-index a1dd7d97..043e98dc 100644
+index a1dd7d97..abca96e6 100644
 --- a/python/triton/runtime/jit.py
 +++ b/python/triton/runtime/jit.py
-@@ -635,7 +635,13 @@ class JITFunction(KernelInterface[T]):
+@@ -635,8 +635,15 @@ class JITFunction(KernelInterface[T]):
              self.cache[device_key][key] = kernel
              #新的
          launcher_src_dir = os.getenv("KERNEL_AUX_FILE_DIR")
 +        block_shape = os.getenv("TUNING_SHAPE_CONFIG")
 +        # print("get TUNING_SHAPE_CONFIG :", block_shape)
 +        if block_shape is None:
-+            block_shape = ""
++            block_shape = ""        
          if launcher_src_dir is not None:
-+            launcher_src_dir +="/" + block_shape
 +            launcher_src_dir +=block_shape
              os.makedirs(launcher_src_dir, mode=0o777, exist_ok=True)
++            print("生成文件夹",launcher_src_dir)
++            print("形状",block_shape)
              ttcir_path = os.path.join(launcher_src_dir, kernel.name + ".ttcir")
              tttcir_path = os.path.join(launcher_src_dir, kernel.name + ".tttcir")
+             llir_path = os.path.join(launcher_src_dir, kernel.name + ".llir")
+@@ -646,9 +653,8 @@ class JITFunction(KernelInterface[T]):
+                 f.write(kernel.asm["tttcir"])
+             with open(llir_path, "w") as f:
+                 f.write(kernel.asm["llir"])
+-                
+         self._call_hook(key, signature, device, constants, options, configs, warmup, before=False)
+-
++        
+         # Check that used global values have not changed.
+         not_present = object()
+         for (name, _), (val, globals_dict) in self.used_global_vals.items():
 diff --git a/third_party/cpu/backend/driver.py b/third_party/cpu/backend/driver.py
-index 66f36a52..ecac196a 100644
+index 66f36a52..b737d521 100644
 --- a/third_party/cpu/backend/driver.py
 +++ b/third_party/cpu/backend/driver.py
-@@ -57,14 +57,17 @@ if os.path.exists(sys_lib_dir):
+@@ -57,16 +57,23 @@ if os.path.exists(sys_lib_dir):
  def compile_module_from_src(inc, src, kernel_name):
      launcher_include_dir = os.getenv("KERNEL_LAUNCHER_INCLUDE_DIR")
      launcher_src_dir = os.getenv("KERNEL_AUX_FILE_DIR")
++    
 +    block_shape = os.getenv("TUNING_SHAPE_CONFIG")
 +    if block_shape is None:
 +        block_shape =""
++        
      if launcher_include_dir is None:
         launcher_include_dir = tempfile.mkdtemp()
- 
--    os.makedirs(launcher_include_dir, mode=0o777, exist_ok=True)
 -
+-    os.makedirs(launcher_include_dir, mode=0o777, exist_ok=True)
++       
++    #os.makedirs(launcher_include_dir, mode=0o777, exist_ok=True)
+ 
      if launcher_src_dir is None:
         launcher_src_dir = launcher_include_dir
 -
@@ -121,18 +130,21 @@ index 66f36a52..ecac196a 100644
 +    launcher_src_dir += block_shape
 +    os.makedirs(launcher_include_dir, mode=0o777, exist_ok=True)
      os.makedirs(launcher_src_dir, mode=0o777, exist_ok=True)
+-
++    print("生成文件夹",launcher_src_dir)
  
- 
-@@ -155,7 +158,7 @@ def ty_to_cpp(ty):
+     # print("launcher include dir: ", launcher_include_dir)
+     # print("launcher src dir: ", launcher_src_dir)
+@@ -155,7 +162,7 @@ def ty_to_cpp(ty):
      }[ty]
  
  
 -def make_launcher(constants, signature,ids,kernel_name):
-+def make_launcher(constants, signature, ids, kernel_name, constexprs_arg_names):
++def make_launcher(constants, signature,ids,kernel_name,constexprs_arg_names):
      # Record the end of regular arguments;
      # subsequent arguments are architecture-specific descriptors.
      arg_decls = ', '.join(f"{ty_to_cpp(ty)} arg{i}" for i, ty in signature.items())
-@@ -188,6 +191,10 @@ def make_launcher(constants, signature,ids,kernel_name):
+@@ -188,6 +195,13 @@ def make_launcher(constants, signature,ids,kernel_name):
      kernel_fn_args_list = ', '.join(f"arg{i}" for i in kernel_fn_args)
      kernel_fn_arg_types = ', '.join([f"{ty_to_cpp(signature[i])}" for i in kernel_fn_args] + ["uint32_t"] * 6)
  
@@ -140,32 +152,32 @@ index 66f36a52..ecac196a 100644
 +    kernel_constants_definition = "".join(f"const int {kernel_name}_{arg_name} = {constants[arg_id]};\n" for arg_id, arg_name in constexprs_arg_names.items() if isinstance(constants[arg_id], int))
 +
 +
++    # print(kernel_constants_declare)
++    # print(kernel_constants_definition)
++    
      inc=f"""
  #include <cstddef>
  #include <stdint.h>
-@@ -199,10 +206,12 @@ extern "C"{{
+@@ -199,6 +213,8 @@ extern "C"{{
   void({kernel_name})({kernel_fn_arg_types});
   }}
   
-+ {kernel_constants_declare}
++{kernel_constants_declare}
 + 
  void {kernel_name}_omp(uint32_t gridX, uint32_t gridY, uint32_t gridZ,int num_threads ,
                          {kernel_name}_kernel_ptr_t kernel_ptr {', ' + arg_decls if len(arg_decls) > 0 else ''});
  """
--#不太确定这个int num_thread怎么回事
-+
-     # generate glue code
-     src = f"""
- #include "{kernel_name}_launcher.h"
-@@ -211,6 +220,7 @@ void {kernel_name}_omp(uint32_t gridX, uint32_t gridY, uint32_t gridZ,int num_th
+@@ -211,6 +227,9 @@ void {kernel_name}_omp(uint32_t gridX, uint32_t gridY, uint32_t gridZ,int num_th
  #include <algorithm>
  #include <optional>
  #include <stdio.h>
++
 +{kernel_constants_definition}
++
  void {kernel_name}_omp(uint32_t gridX, uint32_t gridY, uint32_t gridZ, int num_threads, {kernel_name}_kernel_ptr_t kernel_ptr {', ' + arg_decls if len(arg_decls) > 0 else ''}) {{
    // TODO: Consider using omp collapse(3) clause for simplicity?
    size_t N = gridX * gridY * gridZ;
-@@ -248,9 +258,12 @@ class CPULauncher(object):
+@@ -248,9 +267,12 @@ class CPULauncher(object):
          ids = {"ids_of_const_exprs": src.fn.constexprs if hasattr(src, "fn") else tuple()}
          constants = src.constants if hasattr(src, "constants") else dict()
          cst_key = lambda i: src.fn.arg_names.index(i) if isinstance(i, str) else i
