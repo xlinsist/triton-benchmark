@@ -24,7 +24,6 @@ $ export RISCV_GNU_TOOLCHAIN_DIR=<path-to-your-spacemit-toolchain-linux-glibc-x8
 对于clang环境变量CLANG_BUILD_DIR，一般来说采用本地机器中的clang来设定即可，或者从llvm中源码构建：
 ```
 $ git clone git@github.com:llvm/llvm-project.git
-$ git checkout 6c59f0e1b0fb
 $ mkdir llvm-project/build
 $ cd llvm-project/build
 $ cmake -G Ninja ../llvm-project \
@@ -49,6 +48,7 @@ $ git submodule update --init
 ```
 $ cd benchmarks
 $ cd ./llvm-project  # cloned as submodule
+$ git checkout 86b69c3 # the version that we currently bumped
 $ mkdir build
 $ cd build
 $ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON ../llvm -DLLVM_ENABLE_PROJECTS="mlir;llvm" -DLLVM_TARGETS_TO_BUILD="host;NVPTX;AMDGPU"
@@ -59,8 +59,9 @@ $ ninja
 ```
 $ cd benchmarks
 $ cd ./triton-cpu # cloned as submodule
-$ git apply ../triton-cpu-0001-RISCV.patch # to change the path of the .ir files from .triton/cache to a specific location
-$ git apply ../triton-cpu-0002-Autotuning.patch
+$ git checkout 2fa1c59 # the version that we currently bumped
+$ git apply ../patch/triton-cpu-0001-RISCV.patch
+$ git apply ../patch/triton-cpu-0002-Autotuning.patch
 $ export LLVM_BUILD_DIR=../llvm-project/build
 $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
          LLVM_LIBRARY_DIR=$LLVM_BUILD_DIR/lib \
