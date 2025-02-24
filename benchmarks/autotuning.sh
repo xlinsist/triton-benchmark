@@ -167,8 +167,8 @@ build_triton_driver() {
     block_shape=${tunning_dir#*$1_}
     mkdir -p ${OBJ_DIR}/${name}_$1_${block_shape}
 
-    # soft link common kernel llir file
-    find "${KERNEL_AUX_FILE_DIR}" -maxdepth 1 -type f -exec ln -s {} "${tunning_dir}" \;
+    # TODO: Check if we need to soft link common kernel llir file. If not, remove this line
+    # find "${KERNEL_AUX_FILE_DIR}" -maxdepth 1 -type f -exec ln -s {} "${tunning_dir}" \;
 
     # TODO: Update Clang version
     # For now, we just replace the trunc n[us]w with trunc
@@ -216,12 +216,12 @@ build_triton_driver() {
 drivers=(
   # "triton/layernorm.py main/layernorm.cpp _layer_norm_fwd_fused"
   # "triton/layernorm.py main/layernorm.cpp _layer_norm_bwd_fused"
-  "triton/correlation.py main/correlation.cpp correlation_kernel"
+  # "triton/correlation.py main/correlation.cpp correlation_kernel"
   # "triton/softmax.py main/softmax_kernel.cpp softmax_kernel"
   # "triton/matmul.py main/matmul.cpp matmul_kernel"
   # "triton/rope.py main/rope.cpp rope_kernel"
   # "triton/dropout.py main/dropout.cpp dropout_kernel"
-  # "triton/resize.py main/resize.cpp resize_kernel"
+  "triton/resize.py main/resize.cpp resize_kernel"
   # "triton/warp.py main/warp.cpp warp_kernel"
 )
 
