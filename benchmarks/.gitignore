@@ -1,4 +1,4 @@
 # Triton builds
-build/
-build-x86/
-build-rv/
+build*
+build-*
+*.csv
