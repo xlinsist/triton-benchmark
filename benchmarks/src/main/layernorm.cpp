@@ -4,7 +4,7 @@
 
 #ifdef TRITON_KERNEL_ENABLE
 /// TODO: Better way to include all kernel header file
-#include "_layer_norm_bwd_fused_launcher.h"
+// #include "_layer_norm_bwd_fused_launcher.h"
 #include "_layer_norm_fwd_fused_launcher.h"
 #endif
 
@@ -113,11 +113,11 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < RUN_COUNT; i++) {
     layernorm_forward(real_out, real_mean, real_rstd, x, w, b, N, D);
-    memset(real_dx, 0, N * D * sizeof(float));
-    memset(real_dw, 0, D * sizeof(float));
-    memset(real_db, 0, D * sizeof(float));
-    layernorm_backward(real_dx, real_dw, real_db, dout, x, w, real_mean,
-                       real_rstd, N, D);
+    // memset(real_dx, 0, N * D * sizeof(float));
+    // memset(real_dw, 0, D * sizeof(float));
+    // memset(real_db, 0, D * sizeof(float));
+    // layernorm_backward(real_dx, real_dw, real_db, dout, x, w, real_mean,
+    //                    real_rstd, N, D);
   }
 
   auto c_layernorm_end_time = std::chrono::high_resolution_clock::now();
@@ -136,11 +136,11 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < RUN_COUNT; i++) {
     _layer_norm_fwd_fused_omp(N, 1, 1, &_layer_norm_fwd_fused, x, real_out, w,
                               b, real_mean, real_rstd, D, D, 1e-5);
-    memset(real_dw, 0, D * sizeof(float));
-    memset(real_db, 0, D * sizeof(float));
-    // memset(locks, 0, D * sizeof(float));
-    _layer_norm_bwd_fused_omp(N, 1, 1, _layer_norm_bwd_fused, real_dx, real_dw, real_db,
-                                 dout, x, w, real_mean, real_rstd, locks, D, D);
+    // memset(real_dw, 0, D * sizeof(float));
+    // memset(real_db, 0, D * sizeof(float));
+    // // memset(locks, 0, D * sizeof(float));
+    // _layer_norm_bwd_fused_omp(N, 1, 1, _layer_norm_bwd_fused, real_dx, real_dw, real_db,
+    //                              dout, x, w, real_mean, real_rstd, locks, D, D);
   }
 
   auto triton_layernorm_end_time = std::chrono::high_resolution_clock::now();
