@@ -110,7 +110,7 @@ create_dir_hierarchy(){
   mkdir -p ${BIN_DIR}
   mkdir -p ${OBJ_DIR}
   if [ "${PLATFORM}" == "rv" ]; then
-    cp  ./openmp-sysroot/lib/* ${LIB_DIR}
+    cp  ./openmp-sysroot-riscv/lib/* ${LIB_DIR}
   fi
 }
 
