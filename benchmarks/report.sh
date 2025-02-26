@@ -2,14 +2,6 @@
 
 DIR=`dirname $0`
 
-# LLVM_BUILD_DIR=${DIR}/llvm-project/build
-# CLANGPP="${LLVM_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
-#         --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
-#         --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
-#         -fvectorize -fslp-vectorize -O3"
-# GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
-#     -march=rv64gcv_zvl256b -mabi=lp64d -O3"
-
 BENCHMARK=${DIR}/build/bin
 
 REPORT_FILE=${DIR}/build/report.xls
@@ -110,10 +102,4 @@ done
 echo "" >> ${REPORT_FILE}
 echo "" >> ${REPORT_FILE}
 
-python ./plot_benchmark.py
-
-# echo "${GCC}" >> ${REPORT_FILE}
-# ${GCC} --version >> ${REPORT_FILE}
-# echo "${CLANGPP}" >> ${REPORT_FILE}
-# ${CLANGPP} --version >> ${REPORT_FILE}
-# echo "" >> ${REPORT_FILE}
+python ./get_data.py

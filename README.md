@@ -81,7 +81,6 @@ $ export LD_LIBRARY_PATH=<libomp.so所在的某个lib目录>:$LD_LIBRARY_PATH
 $ ./run.sh
 $ cd ..
 $ ./report.sh
-$ python plot_benchmark.py # 将report结果组织成.csv文件并保存在build目录下
 ```
 
 ### 在RISC-V平台上执行
@@ -102,6 +101,5 @@ $ <用ssh远程登录REMOTE的ip地址>
 // 回到当前目录
 $ ./copy_remote_back.sh # 修改REMOTE的ip地址和文件路径
 $ ./report.sh
-$ python plot_benchmark.py # 将report结果组织成.csv文件并保存在build目录下
 ```
 
