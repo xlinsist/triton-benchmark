@@ -4,7 +4,7 @@ triton-benchmark的benchmarks目录测试了不同的AI算子，在指定了不�
 
 ## gcc和clang环境准备（可选）
 
-该benchmark会比较gcc和clang跟triton-cpu相比的编译性能，因此需要设置对应的gcc环境变量和clang环境变量。如只关心triton-cpu的性能而不希望测试gcc和clang，也可以在build.sh中带有"Make your changes here if you need"注释的部分手动关闭它们。
+该benchmark会比较gcc和clang跟triton-cpu相比的编译性能，因此需要设置对应的gcc环境变量和clang环境变量。如只关心triton-cpu的性能而不希望测试gcc和clang，也可以在build.sh中带有"Make your changes here if you need"注释的部分注释掉相应代码。
 
 ### 准备gcc
 
@@ -20,8 +20,8 @@ $ export RISCV_GNU_TOOLCHAIN_DIR=<path-to-your-spacemit-toolchain-linux-glibc-x8
 或者参考该教程源码安装riscv-gnu-toolchain：https://gitee.com/aosp-riscv/working-group/blob/master/articles/20220721-riscv-gcc.md#3-%E7%BC%96%E8%AF%91-risc-v-%E7%9A%84%E4%BA%A4%E5%8F%89%E5%B7%A5%E5%85%B7%E9%93%BE。
 
 ### 准备clang
-
-对于clang环境变量CLANG_BUILD_DIR，一般来说采用本地机器中的clang来设定即可，或者从llvm中源码构建：
+对于clang环境变量CLANG_BUILD_DIR，可直接从[官网](/home/zhouxulin/intern/AI-Benchmark/benchmarks/llvm-project/build-86b69c/bin)下载预编译二进制文件（建议版本在llvm-18以上），或者从llvm中源码构建：
+> 注意：如采用源码编译的方式，可能需要另外克隆一个llvm-project，不建议复用triton-cpu所依赖的llvm-project。因为在源码编译clang时需要在`-DLLVM_TARGETS_TO_BUILD`里加上RISCV，而加上后triton-cpu虽然能编译通过，但在运行时会报LLVMRISCVAsmParser无法import相关的bug。
 ```
 $ git clone git@github.com:llvm/llvm-project.git
 $ mkdir llvm-project/build
@@ -34,7 +34,6 @@ $ cmake -G Ninja ../llvm-project \
 $ ninja check-mlir check-clang
 $ export CLANG_BUILD_DIR=<path-to-this-llvm-project>/build
 ```
-> 注意：CLANG_BUILD_DIR的路径不能复用triton-cpu依赖的llvm-project来源码编译得到。因为在源码编译clang时需要在`-DLLVM_TARGETS_TO_BUILD`里加上RISCV，而加上后triton-cpu虽然能编译通过，但在运行时会报LLVMRISCVAsmParser无法import相关的bug。
 
 ## triton-cpu构建
 
@@ -60,8 +59,8 @@ $ ninja
 $ cd benchmarks
 $ cd ./triton-cpu # cloned as submodule
 $ git checkout 2fa1c59 # the version that we currently bumped
-$ git apply ../patch/triton-cpu-0001-RISCV.patch
-$ git apply ../patch/triton-cpu-0002-Autotuning.patch
+$ git apply ../patch/triton-cpu-0001-driver.patch
+$ git apply ../patch/triton-cpu-0002-autotuning.patch
 $ export LLVM_BUILD_DIR=../llvm-project/build
 $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
          LLVM_LIBRARY_DIR=$LLVM_BUILD_DIR/lib \
@@ -102,4 +101,3 @@ $ <用ssh远程登录REMOTE的ip地址>
 $ ./copy_remote_back.sh # 修改REMOTE的ip地址和文件路径
 $ ./report.sh
 ```
-
