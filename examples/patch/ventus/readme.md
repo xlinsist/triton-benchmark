@@ -13,5 +13,12 @@ Base LLVM-PROJECT commit: `a4c3683b665c6ac875b4821f5c6a881fdf5fef70`
   ```bash
   mlir-translate -mlir-to-llvmir import.mlir -o res.ll
   ```
+### llvm-0002-mlir-translate-barrier.patch
+- Apply the patch
+```bash
+cd path-to-llvmbuild
+ninja mlir-translate
+```
+
 
 ### [TODO]some patches will be added in patch/ventus
