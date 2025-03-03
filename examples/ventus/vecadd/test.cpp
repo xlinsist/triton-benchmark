@@ -2,15 +2,9 @@
 #include <iostream>
 using namespace std;
 
-#ifndef FILENAME
-#define FILENAME "../../testcase0/vecadd.riscv"  // 默认
-#endif
-
 #ifndef KERNEL_ADDRESS
 #define KERNEL_ADDRESS  0x800000b8  // need modify 
 #endif
-
-char filename[] = FILENAME;  // 使用宏定义的值
 
 struct meta_data{  // 这个metadata是供驱动使用的，而不是给硬件的
     uint64_t kernel_id;
@@ -43,6 +37,7 @@ int main(){
     uint64_t start_pc=0x80000000;
     uint64_t knlbase=0x90000000;
     meta_data meta(0,num_workgroups,num_thread,num_warp,knlbase,ldssize,pdssize,32,32,pdsbase);
+    char filename[]="vecadd.riscv";//set elf filename
 
     uint64_t size_0=0x10000000;
     float data_0[]={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};//arg_1
@@ -91,12 +86,10 @@ int main(){
 
     for(int i=0;i<16;i++)
         cout << data_0[i] << " " << data_1[i] << endl;
-
     uint32_t *print_data=new uint32_t[64];
     vt_copy_from_dev(p,vaddr_print,print_data,64*4,0,0);
     for(int i=0;i<64;i++)
         cout <<  print_data[i] << endl;
-        
     vt_buf_free(p,0,nullptr,0,0);
     delete[] print_data;
     return 0;

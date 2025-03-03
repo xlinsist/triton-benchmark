@@ -51,9 +51,15 @@ objdump:
 # 1. Replace `ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/test.cpp` with the `test.cpp` file provided in the current directory.
 # 2. Navigate to the driver directory and complete the build process as described in the README file.
 pass-to-driver:
-	cp ${OUTPUT_FILE} ../_driver/build/${OUTPUT_FILE} 
-	cp test.cpp ../_driver/test.cpp
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make
+	@find ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/ -type f -name "*.riscv" -delete
+	@cp test.cpp ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/test.cpp
+	@cp ${OUTPUT_FILE} ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/${OUTPUT_FILE}
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make clean
 
+run-backprop-riscv:
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make all
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make run
 # Clean up generated files
 clean:
 	rm -f ${LLVM_DIALECT_FILE} ${LL_FILE} ${OBJ_FILE} ${OUTPUT_FILE} ${LLVM_DIALECT_FROM_GPU_FILE} backprop.riscv.log

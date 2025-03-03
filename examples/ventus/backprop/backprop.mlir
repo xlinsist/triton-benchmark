@@ -34,7 +34,7 @@ module attributes {
     %A_val = memref.load %A[%linear_idx] : memref<16xf32, 1>
     %update = arith.mulf %dY_val, %A_val : f32
 
-    // GPU 同步（如果需要）
+    // GPU 同步
     gpu.barrier
 
     // 将计算结果写回 dW

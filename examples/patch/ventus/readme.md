@@ -19,6 +19,8 @@ Base LLVM-PROJECT commit: `a4c3683b665c6ac875b4821f5c6a881fdf5fef70`
 cd path-to-llvmbuild
 ninja mlir-translate
 ```
+### llvm-0002-mlir-translate-barrier.patch
+modification on ventus-gpgpu-isa-simulator/gpgpu-testcase/driver
 
 
 ### [TODO]some patches will be added in patch/ventus

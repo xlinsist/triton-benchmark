@@ -17,7 +17,7 @@ export SPIKE_TARGET_DIR=${VENTUS_INSTALL_PREFIX}
 export LD_LIBRARY_PATH=$SPIKE_TARGET_DIR/lib:$LD_LIBRARY_PATH
 ```
 
-## 编译  
+## 编译&模拟
 
 以 `backprop.mlir` 为例子
 
@@ -27,17 +27,9 @@ cd path-to-backprop
 make get-backprop-riscv # 自动化生成riscv二进制
 make objdump # 反汇编
 make pass-to-driver # 将test.cpp 和 backprop.riscv传入driver，等待模拟测试
+make run-backprop-riscv
 ```
 
-## 模拟  
-
-确保 `test.cpp` 里面的 `.riscv `文件名无误  
-
-```bash
-cd path-to-_driver
-make all # 清理，cmake配置, 编译
-make run # 模拟
-```
 
 终端的正确输出  
 ```

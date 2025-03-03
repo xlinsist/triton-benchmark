@@ -52,9 +52,16 @@ get-vecadd-riscv: ${OUTPUT_FILE}
 # Note: Before executing run-vecadd-riscv, follow these steps:
 # 1. Replace `ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/test.cpp` with the `test.cpp` file provided in the current directory.
 # 2. Navigate to the driver directory and complete the build process as described in the README file.
-run-vecadd-riscv: ${OUTPUT_FILE}
-	@cp $< ${VENTUS_SPIKE_BUILD}
-	@${VENTUS_SPIKE_BUILD}/spike_test
+pass-to-driver:
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make
+	@find ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/ -type f -name "*.riscv" -delete
+	@cp test.cpp ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/test.cpp
+	@cp ${OUTPUT_FILE} ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/${OUTPUT_FILE}
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make clean
+
+run-vecadd-riscv:
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make all
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make run
 
 # Clean up generated files
 clean:

@@ -1,0 +1,62 @@
+# .mlir -> .riscv 编译原理
+
+从 backprop.mlir（MLIR 表示）开始，逐步转换成 RISC-V 可执行文件 backprop.riscv：
+
+- MLIR 代码优化（mlir-opt） → 生成 LLVM Dialect (backprop_llvm_dialect.mlir)
+- LLVM Dialect 转换为 LLVM IR（mlir-translate） → 生成 LLVM IR (backprop.ll)
+- LLVM IR 编译成目标文件（llc） → 生成目标文件 (backprop.o)
+- 链接生成 RISC-V 可执行文件（ld.lld） → 生成 backprop.riscv
+- 运行 backprop.riscv 在 Ventus 模拟器上
+
+## MLIR -> LLVM Dialect
+
+```bash
+${LLVM_DIALECT_FILE}: ${MLIR_FILE}
+	@${MLIR_OPT} $< --pass-pipeline="builtin.module(convert-func-to-llvm{use-bare-ptr-memref-call-conv=true},convert-scf-to-cf,convert-cf-to-llvm,convert-arith-to-llvm,finalize-memref-to-llvm,reconcile-unrealized-casts)" -o $@
+```
+这里调用 mlir-opt 执行一系列 Pass：
+- convert-func-to-llvm：转换函数调用方式，使其兼容 LLVM
+- convert-scf-to-cf：将 scf.for 结构转换为 cf 结构
+- convert-cf-to-llvm：转换 cf 控制流结构到 LLVM Dialect
+- convert-arith-to-llvm：算术运算转换
+- finalize-memref-to-llvm：处理 MemRef 到 LLVM 指针的转换
+- reconcile-unrealized-casts：处理 Unrealized Casts（未实现的类型转换）
+
+## LLVM Dialect -> LLVM IR
+
+```bash
+${LL_FILE}: ${LLVM_DIALECT_FILE}
+	@${MLIR_TRANSLATE} -mlir-to-llvmir $< -o $@
+	@sed -i 's/define void @backprop/define ventus_kernel void @backprop/' $@
+```
+
+- mlir-translate 将 MLIR Dialect 转换为标准 LLVM IR
+- sed 命令为函数添加 ventus_kernel 前缀， 便于模拟器识别
+
+## LLVM IR -> .obj
+
+```bash
+${OBJ_FILE}: ${LL_FILE}
+	@${LLC} -mtriple=riscv32 -mcpu=ventus-gpgpu --filetype=obj $< -o $@
+```
+llc 用于将 LLVM IR 转换为 RISC-V 目标代码：
+- -mtriple=riscv32：目标架构为 32 位 RISC-V
+- -mcpu=ventus-gpgpu：针对 Ventus-GPGPU 进行优化
+
+## .obj -> .riscv
+
+```bash
+${OUTPUT_FILE}: ${OBJ_FILE}
+	@${LD} -o $@ -T ${VENTUS_INSTALL_PREFIX}/../utils/ldscripts/ventus/elf32lriscv.ld \
+	$< ${VENTUS_INSTALL_PREFIX}/lib/crt0.o ${VENTUS_INSTALL_PREFIX}/lib/riscv32clc.o \
+	-L ${VENTUS_INSTALL_PREFIX}/lib -lworkitem --gc-sections --init backprop
+```
+这里使用 LLVM LLD 链接器 (ld.lld) 生成 RISC-V 可执行文件：
+- elf32lriscv.ld：使用 Ventus-GPGPU 提供的链接脚本
+- crt0.o：启动文件
+- riscv32clc.o：C 运行时支持
+- lworkitem：链接 GPU 运行时库
+- gc-sections：移除未使用的代码
+- init backprop：设置初始化函数
+
+
