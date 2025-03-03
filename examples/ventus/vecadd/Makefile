@@ -1,18 +1,17 @@
 # The commit id of triton used here is `83cf4362bd87c74bf57e79a7e213b4301fa3f25c`.
 # The corresponding commit id of llvm-project is `a4c3683b665c6ac875b4821f5c6a881fdf5fef70`.
-LLVM_BUILD := ../../../../llvm-project/build
+LLVM_BUILD := ${LLVM_BUILD_DIR}
 MLIR_TRANSLATE := ${LLVM_BUILD}/bin/mlir-translate
 MLIR_OPT := ${LLVM_BUILD}/bin/mlir-opt
 
 # Change it to your local path.
-VENTUS_INSTALL_PREFIX :=PATH/TO/YOUR/VENTUS_SOFTWARE_STACK/llvm-project/install
-VENTUS_SPIKE_BUILD := PATH/TO/YOUR/VENTUS_SOFTWARE_STACK/ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/build
+VENTUS_SPIKE_BUILD := ~/myProject/ventus-toolchain/ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/build
 LLC := ${VENTUS_INSTALL_PREFIX}/bin/llc
 LD := ${VENTUS_INSTALL_PREFIX}/bin/ld.lld
 
 # Source and target files
 GPU_FILE=gpu.mlir
-LLVM_DIALECT_FROM_GPU_FILE=llvmDialect_from_gpuDialect.mlir
+LLVM_DIALECT_FROM_GPU_FILE=gpu_llvm_dialect.mlir
 MLIR_FILE=vecadd.mlir
 LLVM_DIALECT_FILE=vecadd_llvm_dialect.mlir
 LL_FILE=vecadd.ll
