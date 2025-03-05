@@ -20,7 +20,11 @@ $ export RISCV_GNU_TOOLCHAIN_DIR=<path-to-your-spacemit-toolchain-linux-glibc-x8
 或者参考该教程源码安装riscv-gnu-toolchain：https://gitee.com/aosp-riscv/working-group/blob/master/articles/20220721-riscv-gcc.md#3-%E7%BC%96%E8%AF%91-risc-v-%E7%9A%84%E4%BA%A4%E5%8F%89%E5%B7%A5%E5%85%B7%E9%93%BE。
 
 ### 准备clang
-对于clang环境变量CLANG_BUILD_DIR，可直接从[官网](/home/zhouxulin/intern/AI-Benchmark/benchmarks/llvm-project/build-86b69c/bin)下载预编译二进制文件（建议版本在llvm-18以上），或者从llvm中源码构建：
+对于clang环境变量CLANG_BUILD_DIR，同样可采用本地机器中的clang来设定：
+```
+$ export CLANG_BUILD_DIR=/usr
+```
+如本地机器没有clang或者clang版本较低，也可直接从[官网](/home/zhouxulin/intern/AI-Benchmark/benchmarks/llvm-project/build-86b69c/bin)下载预编译二进制文件（建议版本在llvm-18以上），或者从llvm中源码构建：
 > 注意：如采用源码编译的方式，可能需要另外克隆一个llvm-project，不建议复用triton-cpu所依赖的llvm-project。因为在源码编译clang时需要在`-DLLVM_TARGETS_TO_BUILD`里加上RISCV，而加上后triton-cpu虽然能编译通过，但在运行时会报LLVMRISCVAsmParser无法import相关的bug。
 ```
 $ git clone git@github.com:llvm/llvm-project.git
