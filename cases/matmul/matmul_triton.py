@@ -1,3 +1,5 @@
+# Refer to: https://github.com/triton-lang/triton-cpu/blob/main/python/tutorials/03-matrix-multiplication-cpu.py
+
 import torch
 import numpy as np
 import triton
@@ -84,7 +86,10 @@ def triton_matmul_kernel(
     tl.store(c_ptrs, c, mask=c_mask)
 
 
-def benchmark_triton(shape, a_np, b_np):
+def benchmark_triton(shape, a_np, b_np, parallel=True):
+    os.environ["TRITON_CPU_BACKEND"] = "1"
+    os.environ["TRITON_CPU_MAX_THREADS"] = "0" if parallel else "1"
+
     M, N, K = shape
     a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
     b = torch.tensor(b_np, device='cpu', dtype=torch.float32)
@@ -104,9 +109,18 @@ def benchmark_triton(shape, a_np, b_np):
     return np.mean(times), c.numpy()
 
 
+def benchmark_triton_single(shape, a_np, b_np):
+    return benchmark_triton(shape, a_np, b_np, parallel=False)
+
+
 if __name__ == "__main__":
-    M = N = K = 128
+    M = N = K = 512
     a_np = np.random.rand(M, K).astype(np.float32)
     b_np = np.random.rand(K, N).astype(np.float32)
     shape = (M, N, K)
-    benchmark_triton(shape, a_np, b_np)
+    time_triton, result_triton = benchmark_triton(shape, a_np, b_np)
+    time_triton_single, result_triton_single = benchmark_triton_single(shape, a_np, b_np)
+    assert np.allclose(result_triton, result_triton_single, atol=1e-3, rtol=1e-3), f"triton result mismatch!"
+    print(result_triton)
+    print(result_triton_single)
+    print(f"triton: {time_triton}, triton_single: {time_triton_single}")
