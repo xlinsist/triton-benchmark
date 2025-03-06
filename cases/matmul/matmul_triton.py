@@ -83,7 +83,9 @@ def triton_matmul_kernel(
     c_mask = (offs_cm[:, None] < M) & (offs_cn[None, :] < N)
     tl.store(c_ptrs, c, mask=c_mask)
 
-def benchmark_triton(M, N, K, a_np, b_np):
+
+def benchmark_triton(shape, a_np, b_np):
+    M, N, K = shape
     a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
     b = torch.tensor(b_np, device='cpu', dtype=torch.float32)
     assert a.shape[1] == b.shape[0], "Incompatible dimensions"
@@ -100,3 +102,11 @@ def benchmark_triton(M, N, K, a_np, b_np):
         end = time.perf_counter()
         times.append(end - start)
     return np.mean(times), c.numpy()
+
+
+if __name__ == "__main__":
+    M = N = K = 128
+    a_np = np.random.rand(M, K).astype(np.float32)
+    b_np = np.random.rand(K, N).astype(np.float32)
+    shape = (M, N, K)
+    benchmark_triton(shape, a_np, b_np)

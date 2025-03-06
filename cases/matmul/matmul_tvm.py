@@ -26,7 +26,9 @@ class TVMMatmul:
                     C[vi, vj] = 0.0
                 C[vi, vj] += A[vi, vk] * B[vk, vj]
 
-def benchmark_tvm(M, N, K, a_np, b_np):
+
+def benchmark_tvm(shape, a_np, b_np):
+    M, N, K = shape
     lib = tvm.build(TVMMatmul, args=[M, N, K], target="llvm")
     a = tvm.nd.array(a_np)
     b = tvm.nd.array(b_np)
@@ -38,3 +40,11 @@ def benchmark_tvm(M, N, K, a_np, b_np):
         end = time.perf_counter()
         times.append(end - start)
     return np.mean(times), c.numpy()
+
+
+if __name__ == "__main__":
+    M = N = K = 128
+    a_np = np.random.rand(M, K).astype(np.float32)
+    b_np = np.random.rand(K, N).astype(np.float32)
+    shape = (M, N, K)
+    benchmark_tvm(shape, a_np, b_np)

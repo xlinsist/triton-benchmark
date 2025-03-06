@@ -6,9 +6,11 @@ import time
 import hidet
 from hidet.lang import attrs
 from hidet.lang.types import f32
+from hidet.lang.mapping import spatial, repeat
 
-def benchmark_hidet(M, N, K, a_np, b_np):
+def benchmark_hidet(shape, a_np, b_np):
     hidet.option.cache_dir('./.hidet/cache')
+    M, N, K = shape
     with hidet.script_module() as script_module:
         @hidet.script
         def hidet_matmul(a: hidet.float32[M, K], b: hidet.float32[K, N], c: hidet.float32[M, N]):
@@ -28,34 +30,9 @@ def benchmark_hidet(M, N, K, a_np, b_np):
         times.append(end - start)
     return np.mean(times), c.numpy()
 
-
-# hidet.option.cache_dir('./.hidet/cache')
-
-# with hidet.script_module() as script_module:
-
-#     @hidet.script
-#     def matmul(a: f32[16, 16], b: f32[16, 16], c: f32[16, 16]):
-#         # specify the function kind as 'cpu_kernel'
-#         attrs.func_kind = 'cpu_kernel'
-
-#         for i in range(16):
-#             for j in range(16):
-#                 c[i, j] = 0.0
-#                 for k in range(16):
-#                     c[i, j] += a[i, k] * b[k, j]
-
-
-# module = script_module.build()
-
-# a = hidet.randn([16, 16])
-# b = hidet.randn([16, 16])
-# c = hidet.empty([16, 16])
-
-# module(a, b, c)
-# # We can check the generated source code to see that the ``launch`` function is generated automatically.
-# print(module.source())
-# # compare the result with torch.matmul
-
-# hidet.utils.assert_close(c, a.torch() @ b.torch(), atol=1e-3, rtol=1e-3)
-# print(c)
-# print(a.torch() @ b.torch())
+if __name__ == "__main__":
+    M = N = K = 128
+    a_np = np.random.rand(M, K).astype(np.float32)
+    b_np = np.random.rand(K, N).astype(np.float32)
+    shape = (M, N, K)
+    benchmark_hidet(shape, a_np, b_np)
