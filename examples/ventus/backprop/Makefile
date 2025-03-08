@@ -21,9 +21,9 @@ OUTPUT_FILE=backprop.riscv
 ${LLVM_DIALECT_FILE}: ${MLIR_FILE}
 	@${MLIR_OPT} $< --pass-pipeline="builtin.module(convert-func-to-llvm{use-bare-ptr-memref-call-conv=true},convert-scf-to-cf,convert-cf-to-llvm,convert-arith-to-llvm,finalize-memref-to-llvm,reconcile-unrealized-casts)" -o $@
 	@echo ">>> .mlir --> mlir-dialect"
+
 # Rules for generating LLVM IR file
 # Note: use sed to add 'ventus_kernel'
-
 ${LL_FILE}: ${LLVM_DIALECT_FILE}
 	@${MLIR_TRANSLATE} -mlir-to-llvmir $< -o $@
 	@sed -i 's/define void @backprop/define ventus_kernel void @backprop/' $@
@@ -38,18 +38,16 @@ ${OBJ_FILE}: ${LL_FILE}
 ${OUTPUT_FILE}: ${OBJ_FILE}
 	@${LD} -o $@ -T ${VENTUS_INSTALL_PREFIX}/../utils/ldscripts/ventus/elf32lriscv.ld $< ${VENTUS_INSTALL_PREFIX}/lib/crt0.o ${VENTUS_INSTALL_PREFIX}/lib/riscv32clc.o -L ${VENTUS_INSTALL_PREFIX}/lib -lworkitem --gc-sections --init backprop
 	@echo ">>> .obj --> .riscv"
+
 # Target for getting RISC-V executable
 get-backprop-riscv: ${OUTPUT_FILE}
 
+# Dump log from RISC-V executable
 objdump:
 	@${VENTUS_INSTALL_PREFIX}/bin/llvm-objdump -d --mattr=+v,+zfinx $(OUTPUT_FILE) > $(OUTPUT_FILE).log 2>&1
 	@echo ">>> Disassembly written to $(OUTPUT_FILE).log"
 
-
 # Target for running RISC-V executable
-# Note: Before executing run-backprop-riscv, follow these steps:
-# 1. Replace `ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/test.cpp` with the `test.cpp` file provided in the current directory.
-# 2. Navigate to the driver directory and complete the build process as described in the README file.
 pass-to-driver:
 	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make
 	@find ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/ -type f -name "*.riscv" -delete
@@ -57,9 +55,11 @@ pass-to-driver:
 	@cp ${OUTPUT_FILE} ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/${OUTPUT_FILE}
 	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make clean
 
+# Run RISC-V executable on the driver
 run-backprop-riscv:
 	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make all
 	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make run
+
 # Clean up generated files
 clean:
 	rm -f ${LLVM_DIALECT_FILE} ${LL_FILE} ${OBJ_FILE} ${OUTPUT_FILE} ${LLVM_DIALECT_FROM_GPU_FILE} backprop.riscv.log

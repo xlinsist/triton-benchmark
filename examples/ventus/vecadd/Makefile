@@ -32,7 +32,6 @@ ${LLVM_DIALECT_FILE}: ${MLIR_FILE}
 
 # Rules for generating LLVM IR file
 # Note: use sed to add 'ventus_kernel'
-
 ${LL_FILE}: ${LLVM_DIALECT_FILE}
 	@${MLIR_TRANSLATE} -mlir-to-llvmir $< -o $@
 	@sed -i 's/define void @vectorAdd/define ventus_kernel void @vectorAdd/' $@
@@ -48,10 +47,7 @@ ${OUTPUT_FILE}: ${OBJ_FILE}
 # Target for getting RISC-V executable
 get-vecadd-riscv: ${OUTPUT_FILE}
 
-# Target for running RISC-V executable
-# Note: Before executing run-vecadd-riscv, follow these steps:
-# 1. Replace `ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/test.cpp` with the `test.cpp` file provided in the current directory.
-# 2. Navigate to the driver directory and complete the build process as described in the README file.
+# Pass RISC-V executable to the driver
 pass-to-driver:
 	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make
 	@find ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/ -type f -name "*.riscv" -delete
@@ -59,6 +55,7 @@ pass-to-driver:
 	@cp ${OUTPUT_FILE} ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/${OUTPUT_FILE}
 	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make clean
 
+# Run RISC-V executable on the driver
 run-vecadd-riscv:
 	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make all
 	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make run

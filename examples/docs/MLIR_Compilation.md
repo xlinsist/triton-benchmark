@@ -15,12 +15,12 @@ ${LLVM_DIALECT_FILE}: ${MLIR_FILE}
 	@${MLIR_OPT} $< --pass-pipeline="builtin.module(convert-func-to-llvm{use-bare-ptr-memref-call-conv=true},convert-scf-to-cf,convert-cf-to-llvm,convert-arith-to-llvm,finalize-memref-to-llvm,reconcile-unrealized-casts)" -o $@
 ```
 这里调用 mlir-opt 执行一系列 Pass：
-- convert-func-to-llvm：转换函数调用方式，使其兼容 LLVM
-- convert-scf-to-cf：将 scf.for 结构转换为 cf 结构
-- convert-cf-to-llvm：转换 cf 控制流结构到 LLVM Dialect
-- convert-arith-to-llvm：算术运算转换
-- finalize-memref-to-llvm：处理 MemRef 到 LLVM 指针的转换
-- reconcile-unrealized-casts：处理 Unrealized Casts（未实现的类型转换）
+- `convert-func-to-llvm`：转换函数调用方式，使其兼容 LLVM
+- `convert-scf-to-cf`：将 scf.for 结构转换为 cf 结构
+- `convert-cf-to-llvm`：转换 cf 控制流结构到 LLVM Dialect
+- `convert-arith-to-llvm`：算术运算转换
+- `finalize-memref-to-llvm`：处理 MemRef 到 LLVM 指针的转换
+- `reconcile-unrealized-casts`：处理 Unrealized Casts（未实现的类型转换）
 
 ## LLVM Dialect -> LLVM IR
 
@@ -30,8 +30,15 @@ ${LL_FILE}: ${LLVM_DIALECT_FILE}
 	@sed -i 's/define void @backprop/define ventus_kernel void @backprop/' $@
 ```
 
-- mlir-translate 将 MLIR Dialect 转换为标准 LLVM IR
-- sed 命令为函数添加 ventus_kernel 前缀， 便于模拟器识别
+- `mlir-translate` 将 `MLIR Dialect` 转换为标准 `LLVM IR`
+- `sed` 命令为函数添加 `ventus_kernel` 前缀， 便于模拟器识别
+
+### ***mlir-translate 拓展***  
+在 MLIR Dialect 里，`gpu.barrier` 还是 `MLIR` 操作，`在backprop.ll` 里面被替换成 `call void @llvm.riscv.ventus.barrier(i32 1)`。
+- 当 mlir-translate 遇到 gpu.barrier 时，调用 getOrCreateVentusBarrier
+- 在 llvm::Module 里创建一个新的 @llvm.riscv.ventus.barrier 函数
+- 具体实现详见 `/mlir/lib/Target/LLVMIR/Dialect/GPU/GPUToLLVMIRTranslation.cpp` 和 `examples/patch/ventus/llvm-0002`
+
 
 ## LLVM IR -> .obj
 
@@ -51,12 +58,6 @@ ${OUTPUT_FILE}: ${OBJ_FILE}
 	$< ${VENTUS_INSTALL_PREFIX}/lib/crt0.o ${VENTUS_INSTALL_PREFIX}/lib/riscv32clc.o \
 	-L ${VENTUS_INSTALL_PREFIX}/lib -lworkitem --gc-sections --init backprop
 ```
-这里使用 LLVM LLD 链接器 (ld.lld) 生成 RISC-V 可执行文件：
-- elf32lriscv.ld：使用 Ventus-GPGPU 提供的链接脚本
-- crt0.o：启动文件
-- riscv32clc.o：C 运行时支持
-- lworkitem：链接 GPU 运行时库
-- gc-sections：移除未使用的代码
-- init backprop：设置初始化函数
+这里使用 LLVM LLD 链接器 (ld.lld) 生成 RISC-V 可执行文件。
 
 
