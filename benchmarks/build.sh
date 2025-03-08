@@ -51,62 +51,6 @@ while [ $# -gt 0 ]; do
       shift
 done
 
-
-################################################################################
-# Set up toolchain environment variables. Make your changes here if you need
-################################################################################
-
-# Default platform
-if [ -z "$PLATFORM" ]; then
-  PLATFORM="x86"
-fi
-if [ -z "$GCC_X86_BUILD_DIR" ]; then
-  GCC_X86_BUILD_DIR=/usr
-fi
-if [ -z "$CLANG_BUILD_DIR" ]; then
-  CLANG_BUILD_DIR=/usr
-fi
-
-# Default clean build directory
-if [ -z "$DO_CLEAN" ]; then
-  DO_CLEAN="--no-clean"
-fi
-
-# Compilation threads
-MAX_MULTITHREADING=8
-
-DIR=`dirname $0`
-SRC_DIR=${DIR}/src
-BUILD_DIR=${DIR}/build
-LLVM_BUILD_DIR=${DIR}/llvm-project/build
-AR="${LLVM_BUILD_DIR}/bin/llvm-ar"
-AS="${LLVM_BUILD_DIR}/bin/llvm-as"
-
-PYC="python"
-TRITON_PLUGIN_DIRS=${DIR}/triton-cpu
-KERNEL_LAUNCHER_INCLUDE_DIR=${BUILD_DIR}/aux/include
-
-case $PLATFORM in
-    x86)
-      CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ -march=native -fvectorize -fslp-vectorize -O3 -std=c++17"
-      GCC="${GCC_X86_BUILD_DIR}/bin/g++ -march=native -O3 -std=c++17"
-      OBJDUMP="${GCC_X86_BUILD_DIR}/bin/objdump"
-      ;;
-    rv)
-      CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
-              --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
-              --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
-              -fvectorize -fslp-vectorize -O3 -std=c++17"
-      GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
-          -march=rv64gcv_zvl256b -mabi=lp64d -O3 -std=c++17"
-      OBJDUMP="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-objdump"
-      ;;
-    ?*)
-      echo "Unknwon option"
-      exit -1
-      ;;
-esac
-
 ################################################################################
 # Core functions for building. No need to modify code here
 ################################################################################
@@ -201,7 +145,6 @@ build_triton_kernel_lib_and_driver() {
     # TODO: Check if we need to soft link common kernel llir file. If not, remove this line
     # find "${KERNEL_AUX_FILE_DIR}" -maxdepth 1 -type f -exec ln -s {} "${tunning_dir}" \;
 
-    # TODO: Update Clang version
     # For now, we just replace the trunc n[us]w with trunc
     sed -i 's/trunc nuw nsw/trunc/g; s/trunc nuw/trunc/g; s/trunc nsw/trunc/g' ${tunning_dir}/*.llir
 
@@ -237,9 +180,6 @@ build_triton_kernel_lib_and_driver() {
 }
 
 create_dir_hierarchy(){
-  rm -rf ${LIB_DIR}
-  rm -rf ${BIN_DIR}
-  rm -rf ${OBJ_DIR}
   mkdir -p ${LIB_DIR}
   mkdir -p ${BIN_DIR}
   mkdir -p ${OBJ_DIR}
@@ -313,58 +253,153 @@ build_driver(){
 }
 
 ################################################################################
+# Set up toolchain environment variables. Make your changes here if you need
+################################################################################
+
+# Compilation threads
+MAX_MULTITHREADING=8
+
+DIR=`dirname $0`
+SRC_DIR=${DIR}/src
+LLVM_BUILD_DIR=${DIR}/llvm-project/build
+AR="${LLVM_BUILD_DIR}/bin/llvm-ar"
+AS="${LLVM_BUILD_DIR}/bin/llvm-as"
+
+PYC="python"
+TRITON_PLUGIN_DIRS=${DIR}/triton-cpu
+
+# Default platform
+if [ -z "$PLATFORM" ]; then
+  PLATFORM="x86"
+fi
+if [ -z "$GCC_X86_BUILD_DIR" ]; then
+  GCC_X86_BUILD_DIR=/usr
+fi
+if [ -z "$CLANG_BUILD_DIR" ]; then
+  CLANG_BUILD_DIR=${LLVM_BUILD_DIR}
+fi
+
+# Default clean build directory
+if [ -z "$DO_CLEAN" ]; then
+  DO_CLEAN="--no-clean"
+fi
+
+case $PLATFORM in
+    x86)
+      CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ -march=native -fvectorize -fslp-vectorize -O3 -std=c++17"
+      GCC="${GCC_X86_BUILD_DIR}/bin/g++ -march=native -O3 -std=c++17"
+      OBJDUMP="${GCC_X86_BUILD_DIR}/bin/objdump"
+      ;;
+    rv)
+      CLANGPP="${CLANG_BUILD_DIR}/bin/clang++ --target=riscv64-unknown-linux-gnu \
+              --sysroot="${RISCV_GNU_TOOLCHAIN_DIR}/sysroot" \
+              --gcc-toolchain="${RISCV_GNU_TOOLCHAIN_DIR}" \
+              -fvectorize -fslp-vectorize -O3 -std=c++17"
+      GCC="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-g++ \
+          -march=rv64gcv_zvl256b -mabi=lp64d -O3 -std=c++17"
+      OBJDUMP="${RISCV_GNU_TOOLCHAIN_DIR}/bin/riscv64-unknown-linux-gnu-objdump"
+      ;;
+    ?*)
+      echo "Unknwon option"
+      exit -1
+      ;;
+esac
+
+#!/bin/bash
+
+################################################################################
 # Main function to build driver. Make your changes here if you need
 ################################################################################
 
-### FIXME: Choose which kernels should be compiled
-# Array of "c_kernel triton_kernel driver_path" entries
-drivers=(
-  "${SRC_DIR}/c/layernorm.cpp ${SRC_DIR}/triton/layernorm.py ${SRC_DIR}/main/layernorm.cpp _layer_norm_fwd_fused"
-  "${SRC_DIR}/c/correlation.cpp ${SRC_DIR}/triton/correlation.py ${SRC_DIR}/main/correlation.cpp correlation_kernel"
-  # "${SRC_DIR}/c/matmul.cpp ${SRC_DIR}/triton/matmul.py ${SRC_DIR}/main/matmul.cpp matmul_kernel"
-  # "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp softmax_kernel"
-  # "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp rope_kernel"
-  # "${SRC_DIR}/c/dropout.cpp ${SRC_DIR}/triton/dropout.py ${SRC_DIR}/main/dropout.cpp dropout_kernel"
-  # "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp resize_kernel"
-  # "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp warp_kernel"
-)
+BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
+# BENCHMARKS=("dropout")
 
-# Iterate over each entry and build the driver
-for entry in "${drivers[@]}"; do
-  # Read the three components into variables
-  IFS=' ' read -r c_kernel triton_kernel driver_path tunning_arg<<< "$entry"
+for BENCHMARK in "${BENCHMARKS[@]}"; do
+  # Array of "c_kernel triton_kernel driver_path tuning_arg" entries
+  case "$BENCHMARK" in
+    "matmul")
+      drivers=(
+        "${SRC_DIR}/c/matmul.cpp ${SRC_DIR}/triton/matmul.py ${SRC_DIR}/main/matmul.cpp matmul_kernel"
+      )
+      ;;
+    "softmax")
+      drivers=(
+        # FIXME: get undefined reference to `Sleef_expf16_u10' running softmax benchmark
+        # "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp softmax_kernel"
+      )
+      ;;
+    "layernorm")
+      drivers=(
+        "${SRC_DIR}/c/layernorm.cpp ${SRC_DIR}/triton/layernorm.py ${SRC_DIR}/main/layernorm.cpp _layer_norm_fwd_fused"
+      )
+      ;;
+    "correlation")
+      drivers=(
+        "${SRC_DIR}/c/correlation.cpp ${SRC_DIR}/triton/correlation.py ${SRC_DIR}/main/correlation.cpp correlation_kernel"
+      )
+      ;;
+    "dropout")
+      drivers=(
+        "${SRC_DIR}/c/dropout.cpp ${SRC_DIR}/triton/dropout.py ${SRC_DIR}/main/dropout.cpp dropout_kernel"
+      )
+      ;;
+    "resize")
+      drivers=(
+        # "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp resize_kernel"
+      )
+      ;;
+    "rope")
+      drivers=(
+        # "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp rope_kernel"
+      )
+      ;;
+    "warp")
+      drivers=(
+        # "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp warp_kernel"
+      )
+      ;;
+    *)
+      echo "Unknown benchmark: $BENCHMARK"
+      continue
+      ;;
+  esac
 
-  ### FIXME: Choose which kernels should be compiled
-  # Set environment variables
-  C_KERNEL="${c_kernel}"
-  TRITON_KERNEL="${triton_kernel}"
-  DRIVER="${driver_path}"
-  TUNNING_ARG="${tunning_arg}"
-  
-  echo "C_KERNEL : "${C_KERNEL}
-  echo "TRITON_KERNEL : "${TRITON_KERNEL}
-  echo "DRIVER : "${DRIVER}
-  echo "TUNNING_ARG : "${TUNNING_ARG}
+  if [[ ${#drivers[@]} -eq 0 ]]; then
+    echo "No valid drivers for $BENCHMARK, skipping..."
+    continue
+  fi
 
-  export C_KERNEL
-  export TRITON_KERNEL
-  export DRIVER
-  export TUNNING_ARG
+  BUILD_DIR="${DIR}/build-${BENCHMARK}"
+  KERNEL_LAUNCHER_INCLUDE_DIR="${BUILD_DIR}/aux/include"
 
-  echo "building golden using gcc..."
-  build_driver gcc
-  echo "build with gcc finished."
+  for entry in "${drivers[@]}"; do
+    IFS=' ' read -r c_kernel triton_kernel driver_path tuning_arg <<< "$entry"
 
-  echo "building golden using clang..."
-  build_driver clang
-  echo "build with clang finished."
+    export C_KERNEL="${c_kernel}"
+    export TRITON_KERNEL="${triton_kernel}"
+    export DRIVER="${driver_path}"
+    export TUNNING_ARG="${tuning_arg}"
 
-  echo "building triton..."
-  build_driver triton
-  echo "build with triton finished."
+    echo "C_KERNEL : ${C_KERNEL}"
+    echo "TRITON_KERNEL : ${TRITON_KERNEL}"
+    echo "DRIVER : ${DRIVER}"
+    echo "TUNNING_ARG : ${TUNNING_ARG}"
 
-  unset C_KERNEL
-  unset TRITON_KERNEL
-  unset DRIVER
-  unset TUNNING_ARG
+    echo "building golden using gcc..."
+    build_driver gcc
+    echo "build with gcc finished."
+
+    echo "building golden using clang..."
+    build_driver clang
+    echo "build with clang finished."
+
+    echo "building triton..."
+    build_driver triton
+    echo "build with triton finished."
+
+    unset C_KERNEL
+    unset TRITON_KERNEL
+    unset DRIVER
+    unset TUNNING_ARG
+  done
 done

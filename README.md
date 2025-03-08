@@ -1,68 +1,40 @@
 # triton-benchmark
 
-triton-benchmark的benchmarks目录测试了不同的AI算子，在指定了不同线程数时，triton-cpu的运行时调优结果。原仓库来自：https://github.com/Terapines/AI-Benchmark 。这里改用clang来移除掉对zcc的依赖。
+`triton-benchmark/benchmarks` directory tests different AI kernels and evaluates the runtime auto-tuning results of triton-cpu on multicore CPU. This repository is forked from: [https://github.com/Terapines/AI-Benchmark](https://github.com/Terapines/AI-Benchmark). We use clang to compile .llir files generated from triton-cpu.
 
-## gcc和clang环境准备（可选）
+## Environmental Setup: triton-cpu
 
-该benchmark会比较gcc和clang跟triton-cpu相比的编译性能，因此需要设置对应的gcc环境变量和clang环境变量。如只关心triton-cpu的性能而不希望测试gcc和clang，也可以在build.sh中带有"Make your changes here if you need"注释的部分注释掉相应代码。
+### **1. Clone and Initialize**
 
-### 准备gcc
-
-对于gcc环境变量，如在X86平台上构建，采用本地机器中的gcc来设定即可，一般路径为/usr/bin/gcc，则可设置为：
-```
-$ export GCC_X86_BUILD_DIR=/usr
-```
-如在RISC-V平台上构建，需要准备riscv-gnu-toolchain工具链项目中的gcc，可拉取进迭时空的包：https://archive.spacemit.com/toolchain/。
-此时设置环境变量如下：
-```
-$ export RISCV_GNU_TOOLCHAIN_DIR=<path-to-your-spacemit-toolchain-linux-glibc-x86_64-v1.0.1>
-```
-或者参考该教程源码安装riscv-gnu-toolchain：https://gitee.com/aosp-riscv/working-group/blob/master/articles/20220721-riscv-gcc.md#3-%E7%BC%96%E8%AF%91-risc-v-%E7%9A%84%E4%BA%A4%E5%8F%89%E5%B7%A5%E5%85%B7%E9%93%BE。
-
-### 准备clang
-对于clang环境变量CLANG_BUILD_DIR，同样可采用本地机器中的clang来设定：
-```
-$ export CLANG_BUILD_DIR=/usr
-```
-如本地机器没有clang或者clang版本较低，也可直接从[官网](/home/zhouxulin/intern/AI-Benchmark/benchmarks/llvm-project/build-86b69c/bin)下载预编译二进制文件（建议版本在llvm-18以上），或者从llvm中源码构建：
-> 注意：如采用源码编译的方式，可能需要另外克隆一个llvm-project，不建议复用triton-cpu所依赖的llvm-project。因为在源码编译clang时需要在`-DLLVM_TARGETS_TO_BUILD`里加上RISCV，而加上后triton-cpu虽然能编译通过，但在运行时会报LLVMRISCVAsmParser无法import相关的bug。
-```
-$ git clone git@github.com:llvm/llvm-project.git
-$ mkdir llvm-project/build
-$ cd llvm-project/build
-$ cmake -G Ninja ../llvm-project \
-    -DLLVM_ENABLE_PROJECTS="mlir;clang" \
-    -DLLVM_TARGETS_TO_BUILD="host;RISCV" \
-    -DLLVM_ENABLE_ASSERTIONS=ON \
-    -DCMAKE_BUILD_TYPE=RELEASE
-$ ninja check-mlir check-clang
-$ export CLANG_BUILD_DIR=<path-to-this-llvm-project>/build
-```
-
-## triton-cpu构建
-
-**1. Clone and Initialize**
-```
+```sh
 $ git clone git@github.com:xlinsist/triton-benchmark.git
 $ cd triton-benchmark
 $ git submodule update --init
 ```
-**2. Build LLVM/MLIR**
-```
+
+### **2. Build LLVM**
+
+```sh
 $ cd benchmarks
-$ cd ./llvm-project  # cloned as submodule
-$ git checkout 86b69c3 # the version that we currently bumped
+$ cd ./llvm-project  # cloned as a submodule
+$ git checkout 86b69c3 # the version we bumped currently
 $ mkdir build
 $ cd build
-$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON ../llvm -DLLVM_ENABLE_PROJECTS="mlir;llvm" -DLLVM_TARGETS_TO_BUILD="host;NVPTX;AMDGPU"
+$ cmake -G Ninja ../llvm \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLLVM_ENABLE_ASSERTIONS=ON \
+        -DLLVM_ENABLE_PROJECTS="mlir;llvm;clang;openmp" \
+        -DOPENMP_ENABLE_LIBOMPTARGET=OFF \
+        -DLLVM_TARGETS_TO_BUILD="host;NVPTX;AMDGPU"
 $ ninja
 ```
 
-**3. Edit and Build triton-cpu**
-```
+### **3. Edit and Build triton-cpu**
+
+```sh
 $ cd benchmarks
-$ cd ./triton-cpu # cloned as submodule
-$ git checkout 2fa1c59 # the version that we currently bumped
+$ cd ./triton-cpu # cloned as a submodule
+$ git checkout 2fa1c59 # the version we bumped currently
 $ git apply ../patch/triton-cpu-0001-driver.patch
 $ git apply ../patch/triton-cpu-0002-autotuning.patch
 $ export LLVM_BUILD_DIR=../llvm-project/build
@@ -72,36 +44,67 @@ $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
          pip install -e python
 ```
 
-## 执行
+## Running on x86
 
-### 在X86平台上执行
-```
+```sh
 $ cd benchmarks
-$ ./build.sh  # 检查和修改该文件中带有"Make your changes here if you need"注释的部分
-$ cp run.sh ./build
-$ cd build
-$ export LD_LIBRARY_PATH=<libomp.so所在的某个lib目录>:$LD_LIBRARY_PATH
+$ export CLANG_BUILD_DIR=./llvm-project/build # Since Clang is built along with LLVM, this path can be used directly.
+$ export GCC_X86_BUILD_DIR=/usr # By default, the system-installed GCC is used; modify as needed.
+$ ./build.sh  # Customize sections marked with "Make your changes here if you need," including method, benchmark, and toolchain paths.
 $ ./run.sh
-$ cd ..
 $ ./report.sh
 ```
 
-### 在RISC-V平台上执行
+## Cross-compiling for RISC-V
 
-首先将build.sh和autotuning.sh里的Platform变量改为"rv"，采用交叉编译先在本地构建出elf文件，随后拷贝到远程RISC-V机器上运行，最后拷贝回本地生成评测结果。
+### **Preparing GCC**
+
+To build on a RISC-V platform, the riscv-gnu-toolchain is required. You can download a precompiled package from: [https://archive.spacemit.com/toolchain/](https://archive.spacemit.com/toolchain/).
+
+Set up the environment variable as follows:
+
+```sh
+$ export RISCV_GNU_TOOLCHAIN_DIR=<path-to-your-spacemit-toolchain-linux-glibc-x86_64-v1.0.1>
 ```
+
+### **Preparing Clang**
+
+To ensure the Clang version matches the llvm version used by triton-cpu, it is recommended to build it from source.
+
+> **Note:** Please clone a separate `llvm-project` instead of reusing the one that `triton-cpu` depends on. This is because when compiling Clang from source, `-DLLVM_TARGETS_TO_BUILD` must include `RISCV` to support cross-compilation. Recompiling the existing `llvm-project` used by `triton-cpu` may result in runtime errors, such as `LLVMRISCVAsmParser` import failures.
+
+```sh
+$ git clone git@github.com:llvm/llvm-project.git
+$ mkdir llvm-project/build
+$ cd llvm-project/build
+$ git checkout 86b69c3 # Ensure it matches the version used by triton-cpu
+$ cmake -G Ninja ../llvm-project \
+    -DLLVM_ENABLE_PROJECTS="mlir;clang;openmp" \
+    -DLLVM_TARGETS_TO_BUILD="host;riscv" \
+    -DOPENMP_ENABLE_LIBOMPTARGET=OFF \
+    -DLLVM_ENABLE_ASSERTIONS=ON \
+    -DCMAKE_BUILD_TYPE=RELEASE
+$ ninja check-mlir check-clang
+$ export CLANG_BUILD_DIR=<path-to-this-llvm-project>/build
+```
+
+### **Running on a RISC-V Platform**
+
+First, use `build.sh` to cross-compile and generate ELF files locally. Then, transfer them to a remote RISC-V machine for execution using `run.sh`. Finally, copy the output directory back to the local machine and run `report.sh` to generate performance results.
+
+```sh
 $ cd benchmarks
-$ ./build.sh # 注意检查和修改该文件中带有"Make your changes here if you need"注释的部分
-$ ./copy_to_remote.sh # 修改REMOTE的ip地址和文件路径
-$ <用ssh远程登录REMOTE的ip地址>
+$ ./build.sh rv
+$ ./copy_to_remote.sh # Modify REMOTE IP and file paths accordingly.
+$ <Use SSH to connect to the REMOTE IP>
 
-// 进入到远程环境下
-# <cd到REMOTE的路径下>
-# export LD_LIBRARY_PATH=<libomp.so所在的某个lib目录>:$LD_LIBRARY_PATH
+// On the remote RISC-V machine:
+# <Navigate to the correct directory>
+# export LD_LIBRARY_PATH=<path-to-libomp.so>:$LD_LIBRARY_PATH
 # ./run.sh
-# exit # 退出远程连接
+# exit # Exit the remote session
 
-// 回到当前目录
-$ ./copy_remote_back.sh # 修改REMOTE的ip地址和文件路径
+// Back on the local machine:
+$ ./copy_remote_back.sh # Modify REMOTE IP and file paths accordingly.
 $ ./report.sh
 ```

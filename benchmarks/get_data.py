@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import os
 import numpy as np
 from pathlib import Path
 
@@ -95,13 +96,17 @@ def find_best_triton_params(df):
 
 # 使用示例
 if __name__ == "__main__":
-    benchmarks = ["matmul", "resize", "softmax", "dropout", "correlation", "layernorm"]
-    # benchmarks = ["layernorm"]
+    benchmarks = ["matmul", "dropout", "correlation", "layernorm"]
     overall_df = pd.DataFrame()
     for benchmark in benchmarks:
-        input_file = f"./build-{benchmark}-tuning/report.xls"  # 替换为你的文件路径
+        input_file = f"./build-{benchmark}/report.xls"  # 替换为你的文件路径
+
+        if not os.path.exists(input_file):
+            print(f"Warning: {input_file} not found. Skipping {benchmark}...")
+            continue
+
         df = parse_performance_data(input_file, benchmark)
         result_df = find_best_triton_params(df)
-        # result_df.to_csv(f"./build-{benchmark}-tuning/performance_report.csv", index=False)
+        result_df.to_csv(f"./build-{benchmark}/performance_report.csv", index=False)
         overall_df = pd.concat([overall_df, result_df[result_df['method'] == 'triton_tuned']], ignore_index=True)
     overall_df.to_csv("./performance_report_overall.csv", index=False)
