@@ -10,7 +10,7 @@ triton.runtime.driver.set_active_to_cpu()
 def get_dropout_kernel_autotune_config():
     configs = []
     for BLOCK_SIZE in [64, 1024, 16384, 262144]:
-      for TILE_SIZE in [16, 32, 64]:
+      for TILE_SIZE in [16, 32, 64, 128]:
         configs.append(triton.Config({'BLOCK_SIZE': BLOCK_SIZE, 'TILE_SIZE': TILE_SIZE}))
     if(os.getenv("ENABLE_AUTOTUNING") == "dropout_kernel"):
       assert (len(configs) > 1), "Autotuning config size need be larger than 1"
