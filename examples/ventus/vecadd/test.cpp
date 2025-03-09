@@ -3,7 +3,7 @@
 using namespace std;
 
 #ifndef KERNEL_ADDRESS
-#define KERNEL_ADDRESS  0x800000b8  // need modify 
+#define KERNEL_ADDRESS  0x800000b8  
 #endif
 
 struct meta_data{  // 这个metadata是供驱动使用的，而不是给硬件的
