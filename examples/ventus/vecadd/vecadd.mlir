@@ -18,7 +18,6 @@ module attributes {
    %val0 = memref.load %arg0[%idx] : memref<1024xf32, 1>
    %val1 = memref.load %arg1[%idx] : memref<1024xf32, 1>
    %sum = arith.addf %val0, %val1 : f32
-   gpu.barrier
    memref.store %sum, %arg0[%idx] : memref<1024xf32, 1>
    return
  }

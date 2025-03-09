@@ -4,7 +4,7 @@
 using namespace std;
 
 #ifndef KERNEL_ADDRESS
-#define KERNEL_ADDRESS  0x800000b8  // 需要修改
+#define KERNEL_ADDRESS  0x800000b8  
 #endif
 
 struct meta_data {
@@ -145,4 +145,5 @@ int main() {
     vt_buf_free(p, 0, nullptr, 0, 0);
 
     return 0;
+    
 }
