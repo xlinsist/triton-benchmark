@@ -1,9 +1,9 @@
 # triton-benchmark/cases
 
 ## Overview
-The `triton-benchmark/cases` directory evaluates both the performance and search time of AI operators optimized using different tuning frameworks on multi-core CPUs. The evaluated tuning frameworks include Triton, TVM, and Hidet.
+The `triton-benchmark/cases` directory **evaluates both the performance and tuning time** of AI kernels optimized using different tuning frameworks on multi-core CPUs.
 
-## Environment Setup
+## Environmental Setup
 
 ### 1. Create and Activate Environment
 ```sh
@@ -24,9 +24,9 @@ pip install apache-tvm --pre # tvm version is 0.14.dev273
 ```
 
 ### 3. Installing Triton-CPU from Source
-> **Note:** Triton-CPU is currently experimental and must be installed from source.
+> **Note:** Triton-CPU is currently experimental and need to be installed from source.
 
-You can reuse the Triton-CPU installed in `triton-benchmark/benchmarks` and rerun the following steps (applying the patches is optional):
+You can reuse the Triton-CPU installed in `triton-benchmark/benchmarks` and rerun the following steps (applying the patches is optional, since it is not relevant to the results):
 
 ```sh
 $ cd benchmarks
