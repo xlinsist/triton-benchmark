@@ -1,11 +1,11 @@
 #include "ventus.h"
 #include <iostream>
-#include <iomanip>
 using namespace std;
 
 #ifndef KERNEL_ADDRESS
-#define KERNEL_ADDRESS  0x800000b8  // need modify 
+#define KERNEL_ADDRESS  0x800000b8  
 #endif
+
 struct meta_data{  // 这个metadata是供驱动使用的，而不是给硬件的
     uint64_t kernel_id;
     uint64_t kernel_size[3];///> 每个kernel的workgroup三维数目
@@ -58,11 +58,11 @@ int main(){
     vt_buf_alloc(p,16*4,&vaddr_2,0,0,0);//allocate arg2 buffer
     vt_buf_alloc(p,16*4,&vaddr_3,0,0,0);//allocate metadata buffer
     vt_buf_alloc(p,2*4,&vaddr_4,0,0,0);//allocate buffer base
+
     vt_buf_alloc(p,size_print,&vaddr_print,0,0,0);//allocate buffer base
 
     vt_copy_to_dev(p,vaddr_1,data_0,16*4,0,0);
     vt_copy_to_dev(p,vaddr_2,data_1,16*4,0,0);
-
     meta.metaDataBaseAddr=vaddr_3;
     meta.pdsBaseAddr=pdsbase;
     uint32_t data_2[14];//metadata
@@ -70,13 +70,13 @@ int main(){
     data_2[0]=KERNEL_ADDRESS;
     data_2[1]=(uint32_t)vaddr_4;
     data_2[2]=meta.kernel_size[0];
-    data_2[6]=16;
+    data_2[6]=num_thread;
     data_2[9]=0;data_2[10]=0;data_2[11]=0;
     data_2[12]=(uint32_t)vaddr_print;data_2[13]=(uint32_t)size_print;
 
     vt_copy_to_dev(p,vaddr_3,data_2,14*4,0,0);
-    uint32_t data_3[3]={(uint32_t)vaddr_1,(uint32_t)vaddr_2};//buffer base
-    vt_copy_to_dev(p,vaddr_4,data_3,3*4,0,0);
+    uint32_t data_3[2]={(uint32_t)vaddr_1,(uint32_t)vaddr_2};//buffer base
+    vt_copy_to_dev(p,vaddr_4,data_3,2*4,0,0);
 
     vt_upload_kernel_file(p,filename,0);
     vt_start(p,&meta,0);
@@ -84,23 +84,14 @@ int main(){
     vt_copy_from_dev(p,vaddr_2,data_1,16*4,0,0);
     vt_copy_from_dev(p,vaddr_1,data_0,16*4,0,0);
 
-    // cout << fixed << setprecision(2);  // Set float precision
     for(int i=0;i<16;i++)
-        cout << data_0[i] << " " << data_1[i]  << endl;
-
+        cout << data_0[i] << " " << data_1[i] << endl;
     uint32_t *print_data=new uint32_t[64];
-    vt_copy_from_dev(p,vaddr_1,print_data,16*4,0,0);
-
-    cout << "\nDebug Print Data:\n";
-    for(int i=0;i<16;i++) {
-        if(print_data[i] != 0) {  // Only print non-zero values
-            float float_val = *reinterpret_cast<float*>(&print_data[i]);
-            cout << "print_data[" << i << "]=" << fixed << setprecision(2) << float_val << endl;
-        }
-    }
-
-    // Clean up
+    vt_copy_from_dev(p,vaddr_print,print_data,64*4,0,0);
+    for(int i=0;i<64;i++)
+        cout <<  print_data[i] << endl;
     vt_buf_free(p,0,nullptr,0,0);
     delete[] print_data;
     return 0;
+    
 }
