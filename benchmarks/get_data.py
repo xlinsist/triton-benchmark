@@ -90,13 +90,12 @@ def find_best_triton_params(df):
     )
     
     best_params['method'] = 'triton_tuned'
-    result_df = pd.concat([df, best_params[['benchmark' ,'shape', 'thread', 'parameter', 'time(s)', 'method']]], ignore_index=True)
-    return result_df
+    return best_params
 
 
 # 使用示例
 if __name__ == "__main__":
-    benchmarks = ["matmul", "dropout", "correlation", "layernorm"]
+    benchmarks = ["matmul", "dropout", "correlation", "layernorm", "softmax"]
     overall_df = pd.DataFrame()
     for benchmark in benchmarks:
         input_file = f"./build-{benchmark}/report.xls"  # 替换为你的文件路径
@@ -105,8 +104,24 @@ if __name__ == "__main__":
             print(f"Warning: {input_file} not found. Skipping {benchmark}...")
             continue
 
-        df = parse_performance_data(input_file, benchmark)
-        result_df = find_best_triton_params(df)
-        result_df.to_csv(f"./build-{benchmark}/performance_report.csv", index=False)
-        overall_df = pd.concat([overall_df, result_df[result_df['method'] == 'triton_tuned']], ignore_index=True)
+        origin_df = parse_performance_data(input_file, benchmark)
+        # origin_df.to_csv(f"./build-{benchmark}/performance_report.csv", index=False)
+
+        triton_df = find_best_triton_params(origin_df)
+
+        result_df = pd.concat([origin_df[origin_df['method'] == 'gcc'], origin_df[origin_df['method'] == 'clang'], triton_df], ignore_index=True)
+        result_df = result_df.sort_values(by=['shape', 'method', 'thread'])
+        result_df = result_df.reset_index(drop=True)
+        result_df = pd.concat([origin_df[origin_df['method'] == 'triton'], result_df], ignore_index=True)
+
+        # 新增一列Speedup，为跟对应shape下的clang_T1相比较的加速比
+        result_df['speedup'] = result_df.apply(
+            lambda row: round(result_df[
+            (result_df['shape'] == row['shape']) & 
+            (result_df['method'] == 'clang') & 
+            (result_df['thread'] == 1)
+            ]['time(s)'].values[0] / row['time(s)'], 4), axis=1
+        )
+
+        overall_df = pd.concat([overall_df, result_df], ignore_index=True)
     overall_df.to_csv("./performance_report_overall.csv", index=False)
