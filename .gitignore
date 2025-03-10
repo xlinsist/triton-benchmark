@@ -17,3 +17,5 @@
 .triton
 
 test_openmp*
+
+automatmul_tuning.log
