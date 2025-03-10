@@ -118,7 +118,7 @@ build_triton_kernel_lib_and_driver() {
 
   driver_name=`basename ${DRIVER} .cpp`
 
-  KERNEL_BIN_DIR=${BIN_DIR}/${driver_name}/
+  KERNEL_BIN_DIR=${BIN_DIR}/${driver_name}
   mkdir -p ${KERNEL_BIN_DIR}
 
   # Data shape config
@@ -168,8 +168,23 @@ build_triton_kernel_lib_and_driver() {
     ${AR} rcs ${LIB_DIR}/libkernel_${TUNNING_ARG}_${block_shape}.a ${OBJ_DIR}/${name}_${TUNNING_ARG}_${block_shape}/${kernel_name}.o
     
     # Compile driver
-    # .elf suffix to avoid scp problem(same name dir and kernel)
-    ${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} -L ${LIB_DIR} -fopenmp -L${CLANG_BUILD_DIR}/lib -lkernel_${TUNNING_ARG}_${block_shape} -lsupport -latomic -std=c++17 -D${KERNEL_ENABLE} -fPIC -o ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf
+    if [ "$1" != "softmax" ]; then
+      # .elf suffix to avoid scp problem(same name dir and kernel)
+      ${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} \
+          -L ${LIB_DIR} -fopenmp -L${CLANG_BUILD_DIR}/lib \
+          -lkernel_${TUNNING_ARG}_${block_shape} -lsupport -latomic \
+          -std=c++17 -D${KERNEL_ENABLE} -fPIC \
+          -o ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf
+    else
+      # Only when benchmark="softmax" do we need to link sleef
+      ${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} \
+          -L ${LIB_DIR} -fopenmp -L${CLANG_BUILD_DIR}/lib \
+          -lkernel_${TUNNING_ARG}_${block_shape} -lsupport -latomic \
+          -std=c++17 -D${KERNEL_ENABLE} -fPIC \
+          -L ${DIR}/triton-cpu/third_party/sleef/build/lib -lsleef \
+          -o ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf
+    fi
+
     ${OBJDUMP} -d ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf &> ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf.s
 
       echo >&6
@@ -188,7 +203,12 @@ create_dir_hierarchy(){
   fi
 }
 
-build_driver(){
+build_driver() {
+  if [ $# -ne 2 ]; then
+    echo "Usage: build_driver <compiler> <benchmark>"
+    exit 1
+  fi
+
   case $1 in
     gcc)
       COMPILER=${GCC}
@@ -212,12 +232,12 @@ build_driver(){
       KERNEL_ENABLE=TRITON_KERNEL_ENABLE
       ;;
     ?*)
-      echo "Unknwon option"
-      exit -1
+      echo "Unknown option: $1"
+      exit 1
       ;;
   esac
 
-  # Clean build directories
+  # Clean build directories if needed
   if [ "x$DO_CLEAN" = "x--clean" ]; then
     echo "Cleaning triton build directories"
     rm -rf $BIN_DIR
@@ -240,15 +260,16 @@ build_driver(){
 
   # MODE="Accuracy"
   MODE="Benchmark"
-  # Benchmark mode don't check accurary since io operation is slow
+  # Benchmark mode doesn't check accuracy since IO operation is slow
   if [ "${MODE}" == "Accuracy" ]; then
     COMPILER+=" -DCHECK_ACCURACY "
   fi
 
   if [ "${KERNEL_ENABLE}" == "C_KERNEL_ENABLE" ]; then
     build_c_kernel_lib_and_driver
-  else 
-    build_triton_kernel_lib_and_driver
+  else
+    echo "Building Triton kernel and driver with benchmark: $2"
+    build_triton_kernel_lib_and_driver "$2"
   fi
 }
 
@@ -311,8 +332,8 @@ esac
 # Main function to build driver. Make your changes here if you need
 ################################################################################
 
-BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
-# BENCHMARKS=("dropout")
+# BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
+BENCHMARKS=("softmax")
 
 for BENCHMARK in "${BENCHMARKS[@]}"; do
   # Array of "c_kernel triton_kernel driver_path tuning_arg" entries
@@ -324,8 +345,7 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
       ;;
     "softmax")
       drivers=(
-        # FIXME: get undefined reference to `Sleef_expf16_u10' running softmax benchmark
-        # "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp softmax_kernel"
+        "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp softmax_kernel"
       )
       ;;
     "layernorm")
@@ -386,15 +406,15 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
     echo "TUNNING_ARG : ${TUNNING_ARG}"
 
     echo "building golden using gcc..."
-    build_driver gcc
+    build_driver gcc $BENCHMARK
     echo "build with gcc finished."
 
     echo "building golden using clang..."
-    build_driver clang
+    build_driver clang $BENCHMARK
     echo "build with clang finished."
 
     echo "building triton..."
-    build_driver triton
+    build_driver triton $BENCHMARK
     echo "build with triton finished."
 
     unset C_KERNEL

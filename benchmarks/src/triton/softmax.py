@@ -74,21 +74,19 @@ def naive_softmax(x):
 
 def get_softmax_kernel_autotune_config():
     configs = []
-    for BLOCK_SIZE in [64, 256, 1024]:
-      for TILE_SIZE in [16, 32, 64]:
+    for BLOCK_SIZE in [64, 256, 1024, 4096, 16384, 65536, 262144]:
+      for TILE_SIZE in [16, 32, 64, 128]:
         configs.append(triton.Config({'BLOCK_SIZE': BLOCK_SIZE, 'TILE_SIZE': TILE_SIZE}))
     if(os.getenv("ENABLE_AUTOTUNING") == "softmax_kernel"):
       assert (len(configs) > 1), "Autotuning config size need be larger than 1"
       return configs
 
-    # 64 is better than 32 in T1 and T4
-    return [triton.Config({'BLOCK_SIZE': 32})]
+    return [triton.Config({'BLOCK_SIZE': 1024, 'TILE_SIZE': 16})]
 
 @triton.autotune(
     configs=get_softmax_kernel_autotune_config(),
     key=[],
 )
-
 @triton.jit
 def softmax_kernel(output_ptr, input_ptr, input_row_stride, output_row_stride, 
                    n_cols, BLOCK_SIZE: tl.constexpr, TILE_SIZE: tl.constexpr):
@@ -141,19 +139,10 @@ def softmax_kernel(output_ptr, input_ptr, input_row_stride, output_row_stride,
 
 def softmax(x, y=None):
     n_rows, n_cols = x.shape
-    # The block size is the smallest power of two greater than the number of columns in `x`
-    BLOCK_SIZE = 8
-    # Another trick we can use is to ask the compiler to use more threads per row by
-    # increasing the number of warps (`num_warps`) over which each row is distributed.
-    # You will see in the next tutorial how to auto-tune this value in a more natural
-    # way so you don't have to come up with manual heuristics yourself.
-    print("softmax_kernel BLOCK_SIZE",BLOCK_SIZE)
 
-    num_warps = 4
-    if BLOCK_SIZE >= 2048:
-        num_warps = 8
-    if BLOCK_SIZE >= 4096:
-        num_warps = 16
+    BLOCK_SIZE = 1024
+    TILE_SIZE = 16
+
     # Allocate output
     if y is None:
         y = torch.empty_like(x)
@@ -182,3 +171,4 @@ triton.runtime.driver.set_active_to_cpu()
 torch.manual_seed(0)
 x = torch.randn(1823, 781, device='cpu')
 y_triton_cpu = softmax(x)
+# print(y_triton_cpu)
