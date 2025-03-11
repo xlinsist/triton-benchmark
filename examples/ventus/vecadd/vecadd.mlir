@@ -19,7 +19,6 @@ module attributes {
    %val1 = memref.load %arg1[%idx] : memref<1024xf32, 1>
    %sum = arith.addf %val0, %val1 : f32
    memref.store %sum, %arg0[%idx] : memref<1024xf32, 1>
-   
    return
  }
 }
