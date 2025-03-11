@@ -1,5 +1,4 @@
 *.xls
-*.txt
 
 # VS Code project files
 .vscode
@@ -18,3 +17,5 @@
 .triton
 
 test_openmp*
+
+automatmul_tuning.log

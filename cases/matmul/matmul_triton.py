@@ -1,32 +1,27 @@
-import torch
+# Refer to: https://github.com/triton-lang/triton-cpu/blob/main/python/tutorials/03-matrix-multiplication-cpu.py
 
+import torch
+import numpy as np
 import triton
 import triton.language as tl
-triton.runtime.driver.set_active_to_cpu()
-
+import time
 import os
 
-USE_GPU = False
-
+# Triton Benchmark
 def get_matmul_kernel_autotune_config():
     configs=[]
     for BLOCK_SIZE_M in [8, 16, 32]:
-      for BLOCK_SIZE_N in [8, 16, 32]:
-        for BLOCK_SIZE_K in [16, 32, 64]:
-            configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}))
-
-    if(os.getenv("ENABLE_AUTOTUNING") == "matmul_kernel"):
-      assert (len(configs) > 1), "Autotuning config size need be larger than 1"
-      return configs
-
-    return [triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 8, 'BLOCK_SIZE_K': 16})]
-
+        for BLOCK_SIZE_N in [8, 16, 32]:
+            for BLOCK_SIZE_K in [64]:
+                configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}))
+    # return configs
+    return [triton.Config({'BLOCK_SIZE_M': 16, 'BLOCK_SIZE_N': 16, 'BLOCK_SIZE_K': 64})]
 @triton.autotune(
     configs=get_matmul_kernel_autotune_config(),
     key=[],
 )
 @triton.jit
-def matmul_kernel(
+def triton_matmul_kernel(
         # Pointers to matrices
         a_ptr, b_ptr, c_ptr,
         # Matrix dimensions
@@ -38,8 +33,7 @@ def matmul_kernel(
         stride_bk, stride_bn,  #
         stride_cm, stride_cn,
         # Meta-parameters
-        BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr, BLOCK_SIZE_K: tl.constexpr,  #
-        ACTIVATION: tl.constexpr  #
+        BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr, BLOCK_SIZE_K: tl.constexpr  #
 ):
     """Kernel for computing the matmul C = A x B.
     A has shape (M, K), B has shape (K, N) and C has shape (M, N)
@@ -81,10 +75,6 @@ def matmul_kernel(
         # Advance the ptrs to the next K block.
         a_ptrs += BLOCK_SIZE_K * stride_ak
         b_ptrs += BLOCK_SIZE_K * stride_bk
-    # You can fuse arbitrary activation functions here
-    # while the accumulator is still in FP32!
-    if ACTIVATION == "leaky_relu":
-        accumulator = leaky_relu(accumulator)
     c = accumulator.to(tl.float32)
 
     # -----------------------------------------------------------
@@ -96,55 +86,41 @@ def matmul_kernel(
     tl.store(c_ptrs, c, mask=c_mask)
 
 
+def benchmark_triton(shape, a_np, b_np, parallel=True):
+    os.environ["TRITON_CPU_BACKEND"] = "1"
+    os.environ["TRITON_CPU_MAX_THREADS"] = "0" if parallel else "1"
 
-# We can fuse `leaky_relu` by providing it as an `ACTIVATION` meta-parameter in `_matmul`.
-@triton.jit
-def leaky_relu(x):
-    x = x + 1
-    return tl.where(x >= 0, x, 0.01 * x)
-
-
-def matmul(a, b, activation=""):
-    # Check constraints.
+    M, N, K = shape
+    a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
+    b = torch.tensor(b_np, device='cpu', dtype=torch.float32)
     assert a.shape[1] == b.shape[0], "Incompatible dimensions"
     assert a.is_contiguous(), "Matrix A must be contiguous"
     assert b.is_contiguous(), "Matrix B must be contiguous"
-    M, K = a.shape
-    K, N = b.shape
-    # Allocates output.
-    c = torch.empty((M, N), device=a.device, dtype=a.dtype)
+    c = torch.empty((M, N), device='cpu', dtype=torch.float32)
     # 1D launch kernel where each block gets its own program.
     grid = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), )
-    matmul_kernel[grid](
-        a, b, c,  #
-        M, N, K,  #
-        a.stride(0), a.stride(1),  #
-        b.stride(0), b.stride(1),  #
-        c.stride(0), c.stride(1),  #
-        ACTIVATION=activation,  #
-    )
-    return c
+
+    times = []
+    for _ in range(10):
+        start = time.perf_counter()
+        triton_matmul_kernel[grid](a, b, c, M, N, K, a.stride(0), a.stride(1), b.stride(0), b.stride(1), c.stride(0), c.stride(1))
+        end = time.perf_counter()
+        times.append(end - start)
+    return np.mean(times), c.numpy()
 
 
-def test_matmul():
-    torch.manual_seed(0)
-    rows1 = 179
-    cols1 = 167
-    rows2 = 167
-    cols2 = 321
-    a = torch.randn((rows1, cols1), device='cpu', dtype=torch.float32)
-    b = torch.randn((rows2, cols2), device='cpu', dtype=torch.float32)
-    # a = torch.full((rows1, cols1), 1, device='cpu', dtype=torch.float32)
-    # b = torch.full((rows2, cols2), 1, device='cpu', dtype=torch.float32)
-    triton_output = matmul(a, b)
-    torch_output = torch.matmul(a, b)
-    '''
-    print(f"triton_output={triton_output}")
-    print(f"torch_output={torch_output}")
-    if torch.allclose(triton_output, torch_output, atol=1e-2, rtol=0):
-        print("✅ Triton and Torch match")
-    else:
-        print("❌ Triton and Torch differ")
-    '''
+def benchmark_triton_single(shape, a_np, b_np):
+    return benchmark_triton(shape, a_np, b_np, parallel=False)
 
-test_matmul()
+
+if __name__ == "__main__":
+    M = N = K = 512
+    a_np = np.random.rand(M, K).astype(np.float32)
+    b_np = np.random.rand(K, N).astype(np.float32)
+    shape = (M, N, K)
+    time_triton, result_triton = benchmark_triton(shape, a_np, b_np)
+    time_triton_single, result_triton_single = benchmark_triton_single(shape, a_np, b_np)
+    assert np.allclose(result_triton, result_triton_single, atol=1e-3, rtol=1e-3), f"triton result mismatch!"
+    print(result_triton)
+    print(result_triton_single)
+    print(f"triton: {time_triton}, triton_single: {time_triton_single}")
