@@ -5,7 +5,7 @@ MLIR_TRANSLATE := ${LLVM_BUILD}/bin/mlir-translate
 MLIR_OPT := ${LLVM_BUILD}/bin/mlir-opt
 
 # Change it to your local path.
-VENTUS_SPIKE_BUILD := ~/myProject/ventus-toolchain/ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/build
+VENTUS_SPIKE_BUILD := ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build
 LLC := ${VENTUS_INSTALL_PREFIX}/bin/llc
 LD := ${VENTUS_INSTALL_PREFIX}/bin/ld.lld
 
