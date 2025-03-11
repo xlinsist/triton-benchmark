@@ -1,5 +1,8 @@
 # Refer to: https://github.com/triton-lang/triton-cpu/blob/main/python/tutorials/02-fused-softmax-cpu.py
 
+import os
+import time
+import numpy as np
 import torch
 
 import triton
@@ -30,7 +33,14 @@ def naive_softmax(x):
 
 
 @triton.jit
-def softmax_kernel(output_ptr, input_ptr, input_row_stride, output_row_stride, n_cols, BLOCK_SIZE: tl.constexpr):
+def softmax_kernel(
+    output_ptr,
+    input_ptr,
+    input_row_stride,
+    output_row_stride,
+    n_cols,
+    BLOCK_SIZE: tl.constexpr,
+):
     # The rows of the softmax are independent, so we parallelize across those
     row_idx = tl.program_id(0)
     # The stride represents how much we need to increase the pointer to advance 1 row
@@ -40,7 +50,7 @@ def softmax_kernel(output_ptr, input_ptr, input_row_stride, output_row_stride, n
     col_offsets = tl.arange(0, BLOCK_SIZE)
     input_ptrs = row_start_ptr + col_offsets
     # Load the row into SRAM, using a mask since BLOCK_SIZE may be > than n_cols
-    row = tl.load(input_ptrs, mask=col_offsets < n_cols, other=-float('inf'))
+    row = tl.load(input_ptrs, mask=col_offsets < n_cols, other=-float("inf"))
     # Subtract maximum for numerical stability
     row_minus_max = row - tl.max(row, axis=0)
     # Note that exponentiation in Triton is fast but approximate (i.e., think __expf in CUDA)
@@ -73,7 +83,7 @@ def softmax(x, y=None, num_threads=0):
         y = torch.empty_like(x)
     # Enqueue kernel. The 1D launch grid is simple: we have one kernel instance per row of
     # the input matrix
-    softmax_kernel[(n_rows, )](
+    softmax_kernel[(n_rows,)](
         y,
         x,
         x.stride(0),
@@ -86,6 +96,26 @@ def softmax(x, y=None, num_threads=0):
     return y
 
 
+def benchmark_triton(a_np, axis=-1, parallel=True):
+    os.environ["TRITON_CPU_BACKEND"] = "1"
+    os.environ["TRITON_CPU_MAX_THREADS"] = "0" if parallel else "1"
+
+    a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
+    assert a.is_contiguous(), "Matrix A must be contiguous"
+    c = torch.empty_like(a)
+
+    times = []
+    for _ in range(10):
+        start = time.perf_counter()
+        softmax(a, c, num_threads=0 if parallel else 1)
+        end = time.perf_counter()
+        times.append(end - start)
+        
+    return np.mean(times), c.numpy()
+
+def benchmark_triton_single(a_np, axis=-1):
+    return benchmark_triton(a_np, axis, parallel=False)
+
 # %%
 # Unit Test
 # ---------
@@ -94,98 +124,43 @@ def softmax(x, y=None, num_threads=0):
 # We make sure that we test our kernel on a matrix with an irregular number of rows and columns.
 # This will allow us to verify that our padding mechanism works.
 
-triton.runtime.driver.set_active_to_cpu()
+if __name__ == "__main__":
+    triton.runtime.driver.set_active_to_cpu()
 
-torch.manual_seed(0)
-x = torch.randn(1823, 781, device='cpu')
-y_triton_cpu = softmax(x)
-y_torch_cpu = torch.softmax(x, axis=1)
-assert torch.allclose(y_triton_cpu, y_torch_cpu), (y_triton_cpu, y_torch_cpu)
+    torch.manual_seed(0)
+    x = torch.randn(1823, 781, device="cpu")
+    y_triton_cpu = softmax(x)
+    y_torch_cpu = torch.softmax(x, axis=1)
+    assert torch.allclose(y_triton_cpu, y_torch_cpu), (y_triton_cpu, y_torch_cpu)
 
-LINE_VALS = [
-    'triton-cpu-single',
-    'triton-cpu',
-    'torch-cpu-compile',
-    'torch-cpu-jit',
-    'torch-cpu-native',
-]
-LINE_NAMES = ['TritonCPU 1', 'TritonCPU', 'TorchCPU (compile)', 'TorchCPU (jit)', 'TorchCPU (native)']
-LINE_STYLES = [('blue', '--'), ('blue', '-'), ('green', '-'), ('green', '--'), ('green', '-.')]
+    LINE_VALS = [
+        "triton-cpu-single",
+        "triton-cpu",
+        "torch-cpu-compile",
+        "torch-cpu-jit",
+        "torch-cpu-native",
+    ]
+    LINE_NAMES = [
+        "TritonCPU 1",
+        "TritonCPU",
+        "TorchCPU (compile)",
+        "TorchCPU (jit)",
+        "TorchCPU (native)",
+    ]
+    LINE_STYLES = [
+        ("blue", "--"),
+        ("blue", "-"),
+        ("green", "-"),
+        ("green", "--"),
+        ("green", "-."),
+    ]
 
-if USE_GPU and triton.runtime.driver.get_active_gpus():
-    triton.runtime.driver.set_active_to_gpu()
-    x = x.to('cuda')
-    y_triton_gpu = softmax(x)
-    y_torch_gpu = torch.softmax(x, axis=1)
-    assert torch.allclose(y_triton_gpu, y_torch_gpu), (y_triton_gpu, y_torch_gpu)
-    LINE_VALS += ['triton-gpu', 'torch-gpu-native', 'torch-gpu-jit']
-    LINE_NAMES += ['TritonGPU', 'TorchGPU (native)', 'TorchGPU (jit)']
-    LINE_STYLES += [('yellow', '-'), ('red', '-'), ('red', '--')]
-
-# %%
-# As expected, the results are identical.
-
-# %%
-# Benchmark
-# ---------
-#
-# Here we will benchmark our operation as a function of the number of columns in the input matrix -- assuming 4096 rows.
-# We will then compare its performance against (1) :code:`torch.softmax` and (2) the :code:`naive_softmax` defined above.
-
-
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['N'],  # argument names to use as an x-axis for the plot
-        x_vals=[128 * i for i in range(2, 52, 2)],  # different possible values for `x_name`
-        line_arg='provider',  # argument name whose value corresponds to a different line in the plot
-        line_vals=LINE_VALS,  # Possible values for `line_arg`.
-        line_names=LINE_NAMES,  # Label name for the lines.
-        styles=LINE_STYLES,  # Line styles.
-        ylabel="GB/s",  # label name for the y-axis
-        plot_name="softmax-performance",  # name for the plot. Used also as a file name for saving the plot.
-        args={'M': 4096},  # values for function arguments not in `x_names` and `y_name`
-    ))
-def benchmark(M, N, provider):
-
-    # Currently compilation time is very long. Let's show the progress.
-    print(f"Running {provider} with {M} x {N}...")
-
-    device = 'cpu' if 'cpu' in provider else 'cuda'
-    x = torch.randn(M, N, device=device, dtype=torch.float32)
-
-    if device == 'cpu':
-        y = torch.empty_like(x)
-        triton.runtime.driver.set_active_to_cpu()
-    else:
-        y = None
+    if USE_GPU and triton.runtime.driver.get_active_gpus():
         triton.runtime.driver.set_active_to_gpu()
-
-    quantiles = [0.5, 0.2, 0.8]
-    if provider == 'torch-cpu-native':
-        ms, min_ms, max_ms = triton.testing.do_bench(lambda: torch.softmax(x, axis=-1), quantiles=quantiles)
-    if provider == 'torch-cpu-jit':
-        ms, min_ms, max_ms = triton.testing.do_bench(lambda: naive_softmax(x), quantiles=quantiles)
-    if provider == 'torch-cpu-compile':
-        compiled = torch.compile(naive_softmax)
-        ms, min_ms, max_ms = triton.testing.do_bench(lambda: compiled(x), quantiles=quantiles)
-    if provider == 'triton-cpu-single':
-        ms, min_ms, max_ms = triton.testing.do_bench(lambda: softmax(x, y, num_threads=1), quantiles=quantiles)
-    if provider == 'triton-cpu':
-        ms, min_ms, max_ms = triton.testing.do_bench(lambda: softmax(x, y), quantiles=quantiles)
-    if provider == 'triton-gpu':
-        ms, min_ms, max_ms = triton.testing.do_bench(lambda: softmax(x), quantiles=quantiles)
-    if provider == 'torch-gpu-native':
-        ms, min_ms, max_ms = triton.testing.do_bench(lambda: torch.softmax(x, axis=-1), quantiles=quantiles)
-    if provider == 'torch-gpu-jit':
-        ms, min_ms, max_ms = triton.testing.do_bench(lambda: naive_softmax(x), quantiles=quantiles)
-    gbps = lambda ms: 2 * x.nelement() * x.element_size() * 1e-9 / (ms * 1e-3)
-    return gbps(ms), gbps(max_ms), gbps(min_ms)
-
-
-benchmark.run(print_data=True, show_plots=True, save_path=".")
-
-# %%
-# In the above plot, we can see that:
-#  - Triton is 4x faster than the Torch JIT. This confirms our suspicions that the Torch JIT does not do any fusion here.
-#  - Triton is noticeably faster than :code:`torch.softmax` -- in addition to being **easier to read, understand and maintain**.
-#    Note however that the PyTorch `softmax` operation is more general and will work on tensors of any shape.
+        x = x.to("cuda")
+        y_triton_gpu = softmax(x)
+        y_torch_gpu = torch.softmax(x, axis=1)
+        assert torch.allclose(y_triton_gpu, y_torch_gpu), (y_triton_gpu, y_torch_gpu)
+        LINE_VALS += ["triton-gpu", "torch-gpu-native", "torch-gpu-jit"]
+        LINE_NAMES += ["TritonGPU", "TorchGPU (native)", "TorchGPU (jit)"]
+        LINE_STYLES += [("yellow", "-"), ("red", "-"), ("red", "--")]
