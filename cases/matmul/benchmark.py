@@ -59,7 +59,7 @@ def main():
     print(f"Running torch benchmark...")
     torch_time, torch_result = benchmark_torch(a_np, b_np)
     records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(ms)': torch_time, 'TuningTime(ms)': 0.0})
-        print(f"Running torch_single benchmark...")
+    print(f"Running torch_single benchmark...")
     torch_time_single, _ = benchmark_torch(a_np, b_np, 1)
     records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch_single', 'Time(ms)': torch_time_single, 'TuningTime(ms)': 0.0})
     
