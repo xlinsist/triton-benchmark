@@ -148,9 +148,9 @@ def get_layer_norm_bwd_fused_autotune_config():
         # triton.Config({'BLOCK_SIZE_N': 1}),
         # triton.Config({'BLOCK_SIZE_N': 2}),
         triton.Config({'BLOCK_SIZE_N': 4}),
-        # triton.Config({'BLOCK_SIZE_N': 8}),
+        triton.Config({'BLOCK_SIZE_N': 8}),
         triton.Config({'BLOCK_SIZE_N': 16}),
-        # triton.Config({'BLOCK_SIZE_N': 32}),
+        triton.Config({'BLOCK_SIZE_N': 32}),
         triton.Config({'BLOCK_SIZE_N': 64}),
     ]
     if(os.getenv("ENABLE_AUTOTUNING") == "_layer_norm_bwd_fused"):
