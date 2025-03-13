@@ -1,29 +1,35 @@
 # triton-benchmark/cases
 
 ## Overview
+
 The `triton-benchmark/cases` directory **evaluates both the performance and tuning time** of AI kernels optimized using different tuning frameworks on multi-core CPUs.
 
 ## Environmental Setup
 
 ### 1. Create and Activate Environment
+
 ```sh
-$ conda create -n <env_name> python=3.10
-$ conda activate <env_name>
-$ pip install -r ./cases/requirements.txt
+conda create -n <env_name> python=3.10
+conda activate <env_name>
+pip install -r ./cases/requirements.txt
 ```
 
 ### 2. Install Hidet and TVM
+
 #### Install Hidet
+
 ```sh
 pip install hidet # hidet version is 0.5.0
 ```
 
 #### Install TVM
+
 ```sh
 pip install apache-tvm --pre # tvm version is 0.14.dev273
 ```
 
 ### 3. Installing Triton-CPU from Source
+
 > **Note:** Triton-CPU is currently experimental and need to be installed from source.
 
 You can reuse the Triton-CPU installed in `triton-benchmark/benchmarks` and rerun the following steps (applying the patches is optional, since it is not relevant to the results):
@@ -42,8 +48,9 @@ $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
 ```
 
 ## Example of Usage
+
 ```sh
-$ cd cases
-$ cd matmul
-$ python benchmark.py
+cd cases
+cd matmul
+python benchmark.py
 ```
