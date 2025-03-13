@@ -47,6 +47,7 @@ $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
          LLVM_SYSPATH=$LLVM_BUILD_DIR \
          pip install -e python
 ```
+> WARNING: Currently triton-cpu may have correctness issues that need to be fixed after applying the patches. We are working on it.
 
 ## Running on x86
 
@@ -61,7 +62,7 @@ $ ./report.sh
 
 ## Cross-compiling for RISC-V
 
-### **Preparing GCC**
+### **1. Preparing GCC**
 
 To build on a RISC-V platform, the riscv-gnu-toolchain is required. You can download a precompiled package from: [https://archive.spacemit.com/toolchain/](https://archive.spacemit.com/toolchain/).
 
@@ -71,7 +72,7 @@ Set up the environment variable as follows:
 $ export RISCV_GNU_TOOLCHAIN_DIR=<path-to-your-spacemit-toolchain-linux-glibc-x86_64-v1.0.1>
 ```
 
-### **Preparing Clang**
+### **2. Preparing Clang**
 
 To ensure the Clang version matches the llvm version used by triton-cpu, it is recommended to build it from source.
 
@@ -92,7 +93,7 @@ $ ninja check-mlir check-clang
 $ export CLANG_BUILD_DIR=<path-to-this-llvm-project>/build
 ```
 
-### **Running on a RISC-V Platform**
+### **3. Running on a RISC-V Platform**
 
 First, use `build.sh` to cross-compile and generate ELF files locally. Then, transfer them to a remote RISC-V machine for execution using `run.sh`. Finally, copy the output directory back to the local machine and run `report.sh` to generate performance results.
 

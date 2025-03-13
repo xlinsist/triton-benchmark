@@ -24,22 +24,8 @@ pip install apache-tvm --pre # tvm version is 0.14.dev273
 ```
 
 ### 3. Installing Triton-CPU from Source
-> **Note:** Triton-CPU is currently experimental and need to be installed from source.
 
-You can reuse the Triton-CPU installed in `triton-benchmark/benchmarks` and rerun the following steps (applying the patches is optional, since it is not relevant to the results):
-
-```sh
-$ cd benchmarks
-$ cd ./triton-cpu # cloned as submodule
-$ git checkout 2fa1c59 # the version that we currently bumped
-$ git apply ../patch/triton-cpu-0001-driver.patch # optional
-$ git apply ../patch/triton-cpu-0002-autotuning.patch # optional
-$ export LLVM_BUILD_DIR=../llvm-project/build
-$ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
-          LLVM_LIBRARY_DIR=$LLVM_BUILD_DIR/lib \
-          LLVM_SYSPATH=$LLVM_BUILD_DIR \
-          pip install -e python
-```
+Triton-CPU is currently experimental and need to be installed from source. Refer to [the official repo](https://github.com/triton-lang/triton-cpu) for installation. The triton-cpu commit id we use is `2fa1c59`.
 
 ## Example of Usage
 ```sh
