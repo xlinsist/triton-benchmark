@@ -37,16 +37,14 @@ def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
     exec_time, result, *rest = method_func(shape, a_np, b_np)
     tune_time = rest[0] if rest else 0.0
     
-    # FIXME: Check why the matmul_kernel of triton-cpu is not correct
-    if method_name not in {"triton", "triton_single"}:
-        assert np.allclose(result, torch_result, atol=1e-3, rtol=1e-3), f"{method_name} result mismatch!"
+    assert np.allclose(result, torch_result, atol=1e-3, rtol=1e-3), f"{method_name} result mismatch!"
     
     return {
         'Benchmark': benchmark, 
         'Shape': shape, 
         'Method': method_name, 
         'Time(ms)': exec_time, 
-        # TODO: Implement tuning and capture tuning time
+        # TODO: Capture triton's tuning time
         'TuningTime(ms)': tune_time
     }
 
