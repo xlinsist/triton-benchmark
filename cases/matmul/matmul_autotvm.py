@@ -88,9 +88,7 @@ if __name__ == "__main__":
     a_np = np.random.uniform(size=(N, L)).astype(np.float32)
     b_np = np.random.uniform(size=(L, M)).astype(np.float32)
 
-    time_autotvm, result_autotvm, tuning_time, tuning_time = benchmark_autotvm(
-        shape, a_np, b_np
-    )
+    time_autotvm, result_autotvm, tuning_time = benchmark_autotvm(shape, a_np, b_np)
     time_tvm, result_tvm = benchmark_tvm(shape, a_np, b_np)
     assert np.allclose(
         result_autotvm, result_tvm, atol=1e-3, rtol=1e-3
