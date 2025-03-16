@@ -8,6 +8,7 @@ from matmul_hidet import benchmark_hidet, benchmark_hidet_single
 from matmul_tvm import benchmark_tvm, benchmark_tvm_single
 from matmul_triton import benchmark_triton, benchmark_triton_single
 from matmul_autotvm import benchmark_autotvm
+from matmul_ansor import benchmark_ansor
 
 benchmark = "matmul"
 
@@ -43,9 +44,9 @@ def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
         'Benchmark': benchmark, 
         'Shape': shape, 
         'Method': method_name, 
-        'Time(ms)': exec_time, 
+        'Time(s)': exec_time, 
         # TODO: Capture triton's tuning time
-        'TuningTime(ms)': tune_time
+        'TuningTime(s)': tune_time
     }
 
 def main():
@@ -58,14 +59,15 @@ def main():
     # Torch benchmark as baseline
     print(f"Running torch benchmark...")
     torch_time, torch_result = benchmark_torch(a_np, b_np)
-    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(ms)': torch_time, 'TuningTime(ms)': 0.0})
+    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(s)': torch_time, 'TuningTime(s)': 0.0})
     print(f"Running torch_single benchmark...")
     torch_time_single, _ = benchmark_torch(a_np, b_np, 1)
-    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch_single', 'Time(ms)': torch_time_single, 'TuningTime(ms)': 0.0})
+    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch_single', 'Time(s)': torch_time_single, 'TuningTime(s)': 0.0})
     
     # Other methods
+    # TODO:fix trtion result mismatch
     methods = [
-        ('hidet', benchmark_hidet), ('tvm', benchmark_tvm), ('triton', benchmark_triton), ('autotvm', benchmark_autotvm), 
+        ('hidet', benchmark_hidet), ('tvm', benchmark_tvm),('triton',benchmark_triton), ('autotvm', benchmark_autotvm),('ansor',benchmark_ansor),
         ('hidet_single', benchmark_hidet_single), ('tvm_single', benchmark_tvm_single), ('triton_single', benchmark_triton_single)
     ]
     
