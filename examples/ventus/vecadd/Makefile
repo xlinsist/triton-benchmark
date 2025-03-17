@@ -1,18 +1,17 @@
 # The commit id of triton used here is `83cf4362bd87c74bf57e79a7e213b4301fa3f25c`.
 # The corresponding commit id of llvm-project is `a4c3683b665c6ac875b4821f5c6a881fdf5fef70`.
-LLVM_BUILD := ../../../../llvm-project/build
+LLVM_BUILD := ${LLVM_BUILD_DIR}
 MLIR_TRANSLATE := ${LLVM_BUILD}/bin/mlir-translate
 MLIR_OPT := ${LLVM_BUILD}/bin/mlir-opt
 
 # Change it to your local path.
-VENTUS_INSTALL_PREFIX :=PATH/TO/YOUR/VENTUS_SOFTWARE_STACK/llvm-project/install
-VENTUS_SPIKE_BUILD := PATH/TO/YOUR/VENTUS_SOFTWARE_STACK/ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/build
+VENTUS_SPIKE_BUILD := ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build
 LLC := ${VENTUS_INSTALL_PREFIX}/bin/llc
 LD := ${VENTUS_INSTALL_PREFIX}/bin/ld.lld
 
 # Source and target files
 GPU_FILE=gpu.mlir
-LLVM_DIALECT_FROM_GPU_FILE=llvmDialect_from_gpuDialect.mlir
+LLVM_DIALECT_FROM_GPU_FILE=gpu_llvm_dialect.mlir
 MLIR_FILE=vecadd.mlir
 LLVM_DIALECT_FILE=vecadd_llvm_dialect.mlir
 LL_FILE=vecadd.ll
@@ -33,7 +32,6 @@ ${LLVM_DIALECT_FILE}: ${MLIR_FILE}
 
 # Rules for generating LLVM IR file
 # Note: use sed to add 'ventus_kernel'
-
 ${LL_FILE}: ${LLVM_DIALECT_FILE}
 	@${MLIR_TRANSLATE} -mlir-to-llvmir $< -o $@
 	@sed -i 's/define void @vectorAdd/define ventus_kernel void @vectorAdd/' $@
@@ -49,13 +47,18 @@ ${OUTPUT_FILE}: ${OBJ_FILE}
 # Target for getting RISC-V executable
 get-vecadd-riscv: ${OUTPUT_FILE}
 
-# Target for running RISC-V executable
-# Note: Before executing run-vecadd-riscv, follow these steps:
-# 1. Replace `ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/test.cpp` with the `test.cpp` file provided in the current directory.
-# 2. Navigate to the driver directory and complete the build process as described in the README file.
-run-vecadd-riscv: ${OUTPUT_FILE}
-	@cp $< ${VENTUS_SPIKE_BUILD}
-	@${VENTUS_SPIKE_BUILD}/spike_test
+# Pass RISC-V executable to the driver
+pass-to-driver:
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make
+	@find ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/ -type f -name "*.riscv" -delete
+	@cp test.cpp ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/test.cpp
+	@cp ${OUTPUT_FILE} ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/${OUTPUT_FILE}
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make clean
+
+# Run RISC-V executable on the driver
+run-vecadd-riscv:
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make all
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make run
 
 # Clean up generated files
 clean:

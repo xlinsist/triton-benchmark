@@ -7,6 +7,8 @@ import pandas as pd
 from matmul_hidet import benchmark_hidet, benchmark_hidet_single
 from matmul_tvm import benchmark_tvm, benchmark_tvm_single
 from matmul_triton import benchmark_triton, benchmark_triton_single
+from matmul_autotvm import benchmark_autotvm
+from matmul_ansor import benchmark_ansor
 
 benchmark = "matmul"
 
@@ -33,19 +35,18 @@ def benchmark_torch(a_np, b_np, num_threads=None):
 
 def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
     """Run a single benchmark and validate results."""
-    exec_time, result = method_func(shape, a_np, b_np)
+    exec_time, result, *rest = method_func(shape, a_np, b_np)
+    tune_time = rest[0] if rest else 0.0
     
-    # FIXME: Check why the matmul_kernel of triton-cpu is not correct
-    if method_name not in {"triton", "triton_single"}:
-        assert np.allclose(result, torch_result, atol=1e-3, rtol=1e-3), f"{method_name} result mismatch!"
+    assert np.allclose(result, torch_result, atol=1e-3, rtol=1e-3), f"{method_name} result mismatch!"
     
     return {
         'Benchmark': benchmark, 
         'Shape': shape, 
         'Method': method_name, 
-        'Time(ms)': exec_time, 
-        # TODO: Implement tuning and capture tuning time
-        'TuningTime(ms)': 0.0
+        'Time(s)': exec_time, 
+        # TODO: Capture triton's tuning time
+        'TuningTime(s)': tune_time
     }
 
 def main():
@@ -58,14 +59,15 @@ def main():
     # Torch benchmark as baseline
     print(f"Running torch benchmark...")
     torch_time, torch_result = benchmark_torch(a_np, b_np)
-    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(ms)': torch_time, 'TuningTime(ms)': 0.0})
+    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(s)': torch_time, 'TuningTime(s)': 0.0})
     print(f"Running torch_single benchmark...")
     torch_time_single, _ = benchmark_torch(a_np, b_np, 1)
-    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch_single', 'Time(ms)': torch_time_single, 'TuningTime(ms)': 0.0})
+    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch_single', 'Time(s)': torch_time_single, 'TuningTime(s)': 0.0})
     
     # Other methods
+    # TODO:fix trtion result mismatch
     methods = [
-        ('hidet', benchmark_hidet), ('tvm', benchmark_tvm), ('triton', benchmark_triton),
+        ('hidet', benchmark_hidet), ('tvm', benchmark_tvm),('triton',benchmark_triton), ('autotvm', benchmark_autotvm),('ansor',benchmark_ansor),
         ('hidet_single', benchmark_hidet_single), ('tvm_single', benchmark_tvm_single), ('triton_single', benchmark_triton_single)
     ]
     

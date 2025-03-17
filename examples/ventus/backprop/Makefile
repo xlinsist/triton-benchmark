@@ -1,36 +1,67 @@
-# Change it to your local path.
-LLVM_BUILD := /root/ventus/llvm-project/build
-
+# The commit id of triton used here is `83cf4362bd87c74bf57e79a7e213b4301fa3f25c`.
+# The corresponding commit id of llvm-project is `a4c3683b665c6ac875b4821f5c6a881fdf5fef70`.
+LLVM_BUILD := ${LLVM_BUILD_DIR}
 MLIR_TRANSLATE := ${LLVM_BUILD}/bin/mlir-translate
-DIFF_TOOL := vimdiff
-
-backprop_official_import_llvm.mlir: backprop_official.ll
-	@${MLIR_TRANSLATE} --import-llvm -o $@ $<
-
-backprop_official_import_llvm_to_llvmir.ll: backprop_official_import_llvm.mlir
-	@${MLIR_TRANSLATE} --mlir-to-llvmir -o $@ $<
-
-%.s: %.ll 
-	${LLVM_BUILD}/bin/llc -mtriple=riscv32 -mcpu=ventus-gpgpu $< -o $@
-
-view-diff: backprop_custom_translate.s backprop_official.s
-	${DIFF_TOOL} $^	
-
-#################### Running backprop_*.ll based on ventus toolchains ####################
+MLIR_OPT := ${LLVM_BUILD}/bin/mlir-opt
 
 # Change it to your local path.
-VENTUS_INSTALL_PREFIX := /root/ventus/llvm-project/install
-VENTUS_SPIKE_BUILD := /root/ventus/ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/build
+VENTUS_SPIKE_BUILD := ~/myProject/ventus-toolchain/ventus-gpgpu-isa-simulator/gpgpu-testcase/driver/build
+LLC := ${VENTUS_INSTALL_PREFIX}/bin/llc
+LD := ${VENTUS_INSTALL_PREFIX}/bin/ld.lld
 
-# All backprop_official.ll, backprop_manual.ll and backprop_official_import_llvm_to_llvmir.ll can be renamed to backprop.ll.
-get-backprop-riscv:
-	${VENTUS_INSTALL_PREFIX}/bin/llc -mtriple=riscv32 -mcpu=ventus-gpgpu backprop.ll -o backprop.s
-	${VENTUS_INSTALL_PREFIX}/bin/llc -mtriple=riscv32 -mcpu=ventus-gpgpu --filetype=obj backprop.ll -o backprop.o
-	${VENTUS_INSTALL_PREFIX}/bin/ld.lld -o vecadd.riscv -T ${VENTUS_INSTALL_PREFIX}/../utils/ldscripts/ventus/elf32lriscv.ld backprop.o ${VENTUS_INSTALL_PREFIX}/lib/crt0.o ${VENTUS_INSTALL_PREFIX}/lib/riscv32clc.o -L${VENTUS_INSTALL_PREFIX}/lib -lworkitem --gc-sections --init bpnn_layerforward_ocl --init bpnn_adjust_weights_ocl
+# Source and target files
+MLIR_FILE=backprop.mlir
+LLVM_DIALECT_FILE=backprop_llvm_dialect.mlir
+LL_FILE=backprop.ll
+OBJ_FILE=backprop.o
+OUTPUT_FILE=backprop.riscv
 
+# Rules for generating LLVM Dialect file
+# scf.for -> cd --> llvm is added
+${LLVM_DIALECT_FILE}: ${MLIR_FILE}
+	@${MLIR_OPT} $< --pass-pipeline="builtin.module(convert-func-to-llvm{use-bare-ptr-memref-call-conv=true},convert-scf-to-cf,convert-cf-to-llvm,convert-arith-to-llvm,finalize-memref-to-llvm,reconcile-unrealized-casts)" -o $@
+	@echo ">>> .mlir --> mlir-dialect"
+
+# Rules for generating LLVM IR file
+# Note: use sed to add 'ventus_kernel'
+${LL_FILE}: ${LLVM_DIALECT_FILE}
+	@${MLIR_TRANSLATE} -mlir-to-llvmir $< -o $@
+	@sed -i 's/define void @backprop/define ventus_kernel void @backprop/' $@
+	@echo ">>> mlir-dialect --> .ll"
+
+# Rules for generating object file
+${OBJ_FILE}: ${LL_FILE}
+	@${LLC} -mtriple=riscv32 -mcpu=ventus-gpgpu --filetype=obj $< -o $@
+	@echo ">>> .ll --> .obj"
+
+# Rules for generating RISC-V executable
+${OUTPUT_FILE}: ${OBJ_FILE}
+	@${LD} -o $@ -T ${VENTUS_INSTALL_PREFIX}/../utils/ldscripts/ventus/elf32lriscv.ld $< ${VENTUS_INSTALL_PREFIX}/lib/crt0.o ${VENTUS_INSTALL_PREFIX}/lib/riscv32clc.o -L ${VENTUS_INSTALL_PREFIX}/lib -lworkitem --gc-sections --init backprop
+	@echo ">>> .obj --> .riscv"
+
+# Target for getting RISC-V executable
+get-backprop-riscv: ${OUTPUT_FILE}
+
+# Dump log from RISC-V executable
+objdump:
+	@${VENTUS_INSTALL_PREFIX}/bin/llvm-objdump -d --mattr=+v,+zfinx $(OUTPUT_FILE) > $(OUTPUT_FILE).log 2>&1
+	@echo ">>> Disassembly written to $(OUTPUT_FILE).log"
+
+# Target for running RISC-V executable
+pass-to-driver:
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make
+	@find ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/ -type f -name "*.riscv" -delete
+	@cp test.cpp ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/test.cpp
+	@cp ${OUTPUT_FILE} ${SPIKE_SRC_DIR}/gpgpu-testcase/driver/build/${OUTPUT_FILE}
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make clean
+
+# Run RISC-V executable on the driver
 run-backprop-riscv:
-	cp vecadd.riscv ${VENTUS_SPIKE_BUILD}
-	${VENTUS_SPIKE_BUILD}/spike_test
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make all
+	@cd ${SPIKE_SRC_DIR}/gpgpu-testcase/driver && make run
 
+# Clean up generated files
 clean:
-	-rm *.s backprop.o vecadd.riscv vecadd.riscv.log
+	rm -f ${LLVM_DIALECT_FILE} ${LL_FILE} ${OBJ_FILE} ${OUTPUT_FILE} ${LLVM_DIALECT_FROM_GPU_FILE} backprop.riscv.log
+
+.PHONY: get-backprop-riscv run-backprop-riscv clean
