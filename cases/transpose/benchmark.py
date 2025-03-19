@@ -3,26 +3,32 @@ import torch
 import numpy as np
 import multiprocessing
 import pandas as pd
-import triton
-import triton.language as tl
-import os
 
-from transpose_triton import benchmark_triton, benchmark_triton_single
-from transpose_hidet import benchmark_hidet, benchmark_hidet_single
-# from transpose_tvm import benchmark_tvm, benchmark_tvm_single
+from transpose_triton import benchmark_triton
+# from transpose_hidet import benchmark_hidet
+# from transpose_tvm import benchmark_tvm
+# from transpose_autotvm import benchmark_autotvm
 
-benchmark = "transpose"
+from config import measurement_iterations, benchmark, benchmark_parallel, warmup_iterations
 
-def benchmark_torch(x_np, num_threads=None):
+def benchmark_torch(x_np, parallel):
     """Benchmark PyTorch transpose performance."""
     x = torch.tensor(x_np, dtype=torch.float32)
     
-    if num_threads is None:
-        num_threads = multiprocessing.cpu_count()
+    num_threads = multiprocessing.cpu_count() if parallel else 1
     torch.set_num_threads(num_threads)
 
+    # Measure warm-up time
+    warmup_times = []
+    for _ in range(warmup_iterations):
+        warmup_start = time.perf_counter()
+        result = torch.transpose(x, 0, 1).contiguous()
+        warmup_end = time.perf_counter()
+        warmup_times.append((warmup_end - warmup_start) * 1000)
+
+    # Measure execution time
     times = []
-    for _ in range(10):
+    for _ in range(measurement_iterations):
         start = time.perf_counter()
         result = torch.transpose(x, 0, 1).contiguous()  # Make contiguous for fair comparison
         end = time.perf_counter()
@@ -31,21 +37,21 @@ def benchmark_torch(x_np, num_threads=None):
     with torch.no_grad():
         result_np = result.numpy()
     
-    return np.mean(times), result_np
+    return np.mean(times) * 1000, result_np, warmup_times  # Convert to ms
 
-def run_benchmark(method_name, method_func, shape, x_np, torch_result):
+def run_benchmark(method_name, method_func, x_np, expect, parallel=False):
     """Run a single benchmark and validate results."""
-    exec_time, result, *rest = method_func(shape, x_np)
-    tune_time = rest[0] if rest else 0.0
+    print(f"  Running {method_name}{'_parallel' if parallel else ''}...")
+    exec_time, result, warmup_times = method_func(x_np, parallel)
     
-    assert np.allclose(result, torch_result, atol=1e-3, rtol=1e-3), f"{method_name} result mismatch! Expected {torch_result}, got {result}"
+    assert np.allclose(result, expect, atol=1e-3, rtol=1e-3), f"{method_name} result mismatch!"
     
     return {
         'Benchmark': benchmark, 
-        'Shape': shape, 
-        'Method': method_name, 
+        'Shape': x_np.shape, 
+        'Method': method_name + ('_parallel' if parallel else ''), 
         'Time(ms)': exec_time, 
-        'TuningTime(ms)': tune_time
+        'WarmUpTimes(ms)': warmup_times
     }
 
 def main():
@@ -55,35 +61,35 @@ def main():
     
     for shape in shapes:
         M, N = shape
+        print(f"\nBenchmarking shape {shape}...")
         x_np = np.random.rand(M, N).astype(np.float32)
+        expect = x_np.T
         
-        # Torch benchmark as baseline
-        print(f"Running torch benchmark for shape {shape}...")
-        torch_time, torch_result = benchmark_torch(x_np)
-        records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(ms)': torch_time, 'TuningTime(ms)': 0.0})
-        
-        print(f"Running torch_single benchmark for shape {shape}...")
-        torch_time_single, _ = benchmark_torch(x_np, 1)
-        records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch_single', 'Time(ms)': torch_time_single, 'TuningTime(ms)': 0.0})
-        
-        # Other methods
+        # Define all methods
         methods = [
-            ('triton', benchmark_triton), 
-            ('triton_single', benchmark_triton_single),
+            ('torch', benchmark_torch),
+            ('triton', benchmark_triton),
             # ('hidet', benchmark_hidet),
-            # ('hidet_single', benchmark_hidet_single),
             # ('tvm', benchmark_tvm),
-            # ('tvm_single', benchmark_tvm_single)
+            # ('autotvm', benchmark_autotvm),
         ]
         
         for method, method_func in methods:
-            print(f"Running {method} benchmark for shape {shape}...")
-            records.append(run_benchmark(method, method_func, shape, x_np, torch_result))
+            # Run without parallelism
+            records.append(run_benchmark(method, method_func, x_np, expect, False))
+            
+            # Run with parallelism if enabled
+            if benchmark_parallel:
+                records.append(run_benchmark(method, method_func, x_np, expect, True))
     
+    # Create and save the benchmark results
     df = pd.DataFrame(records)
-    df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
+    df["Time(ms)"] = df["Time(ms)"].apply(lambda x: round(x, 3))
+    df["WarmUpTimes(ms)"] = df["WarmUpTimes(ms)"].apply(lambda x: ', '.join(f"{t:.3f}" for t in x))
+    df.sort_values(by=["Shape"])
+    print("\nBenchmark Results:")
     print(df)
-    df.to_csv("./transpose_performance_report.csv", index=False)
+    df.to_csv(f"./{benchmark}_performance_report.csv", index=False)
 
 if __name__ == "__main__":
     main() 

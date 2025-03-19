@@ -5,7 +5,7 @@ import triton.language as tl
 import time
 import os
 
-
+from config import measurement_iterations, warmup_iterations
 
 def get_configs():
     configs = []
@@ -14,8 +14,8 @@ def get_configs():
             configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N}))
     return configs
 
-# @triton.autotune(get_configs(),key=['M', 'N'])
-@triton.autotune([get_configs()[0]],key=['M', 'N'])
+# Enable full autotuning for benchmarking
+@triton.autotune(get_configs(), key=['M', 'N'])
 @triton.jit
 def transpose_kernel(
     # Pointers to matrices
@@ -90,40 +90,50 @@ def transpose(x, y=None):
     
     return y
 
-def benchmark_triton(shape, x_np, parallel=True):
+def benchmark_triton(x_np, parallel=False):
     """Benchmark the Triton implementation of transpose."""
     os.environ["TRITON_CPU_BACKEND"] = "1"
     os.environ["TRITON_CPU_MAX_THREADS"] = "0" if parallel else "1"
     
-    M, N = shape
+    M, N = x_np.shape
     x = torch.tensor(x_np, device='cpu', dtype=torch.float32)
     assert x.is_contiguous(), "Input matrix must be contiguous"
     
     y = torch.empty((N, M), device='cpu', dtype=torch.float32)
     
+    warmup_times = []
+    tuning_start = time.perf_counter()
+    
+    # Run warmup iterations (first one triggers autotuning)
+    for i in range(warmup_iterations):
+        iter_start = time.perf_counter()
+        transpose(x, y)
+        iter_end = time.perf_counter()
+        warmup_times.append((iter_end - iter_start) * 1000)  # Convert to ms
+    
+    # Now benchmark the execution time (post-tuning)
     times = []
-    for _ in range(10):
+    for _ in range(measurement_iterations):  # Match loop_times from benchmark.py
         start = time.perf_counter()
         transpose(x, y)
         end = time.perf_counter()
         times.append(end - start)
     
-    return np.mean(times), y.numpy()
-
-def benchmark_triton_single(shape, x_np):
-    """Benchmark the Triton implementation of transpose with a single thread."""
-    return benchmark_triton(shape, x_np, parallel=False)
+    return np.mean(times) * 1000, y.numpy(), warmup_times
 
 if __name__ == "__main__":
     M, N = 1024, 768
     x_np = np.random.rand(M, N).astype(np.float32)
     shape = (M, N)
     
-    time_triton, result_triton = benchmark_triton(shape, x_np)
-    time_triton_single, result_triton_single = benchmark_triton_single(shape, x_np)
+    time_triton, result_triton, tuning_time = benchmark_triton(x_np, False)
+    time_triton_parallel, result_triton_parallel, tuning_time_parallel = benchmark_triton(x_np, False)
     
     # Verify correctness
     expected = x_np.transpose()
     assert np.allclose(result_triton, expected, atol=1e-3, rtol=1e-3), "Triton result mismatch!"
-    assert np.allclose(result_triton_single, expected, atol=1e-3, rtol=1e-3), "Triton single result mismatch!"
+    assert np.allclose(result_triton_parallel, expected, atol=1e-3, rtol=1e-3), "Triton parallel result mismatch!"
+    
+    print(f"Triton single: {time_triton:.3f} ms (tuning: {tuning_time:.3f} ms)")
+    print(f"Triton parallel: {time_triton_parallel:.3f} ms (tuning: {tuning_time_parallel:.3f} ms)")
     
