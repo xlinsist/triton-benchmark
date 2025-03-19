@@ -7,9 +7,7 @@ import numpy as np
 np.float_ = np.float64
 import time
 import tvm
-from tvm.script import ir as I
-from tvm.script import tir as T
-from tvm import te, tir, auto_scheduler
+from tvm import te
 
 
 def benchmark_tvm(a_np, axis=-1):
@@ -39,10 +37,22 @@ if __name__ == "__main__":
     a_np = np.random.rand(N).astype(np.float32)
     axis = -1
 
+    # benchmarks
     time_tvm, result_tvm = benchmark_tvm(a_np, axis)
     time_tvm_single, result_tvm_single = benchmark_tvm_single(a_np, axis)
 
-    assert np.allclose(
-        result_tvm, result_tvm_single, atol=1e-3, rtol=1e-3
-    ), f"tvm result mismatch!"
+    # torch
+    import torch
+
+    a = torch.tensor(a_np.copy(), device="cpu", dtype=torch.float32)
+    with torch.no_grad():
+        result_torch = torch.nn.functional.softmax(a, axis)
+
     print(f"tvm: {time_tvm}, tvm_single: {time_tvm_single}")
+    assert np.allclose(
+        result_torch, result_tvm_single, atol=1e-3, rtol=1e-3
+    ), f"tvm result mismatch!"
+    assert np.allclose(
+        result_torch, result_tvm_single, atol=1e-3, rtol=1e-3
+    ), f"tvm_single result mismatch!"
+    print("pass")

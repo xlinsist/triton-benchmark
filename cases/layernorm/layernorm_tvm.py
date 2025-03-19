@@ -8,9 +8,7 @@ import torch
 np.float_ = np.float64
 import time
 import tvm
-from tvm.script import ir as I
-from tvm.script import tir as T
-from tvm import te, tir, auto_scheduler
+from tvm import te
 
 
 def benchmark_tvm(a_np):
@@ -30,7 +28,7 @@ def benchmark_tvm(a_np):
         (shape[1],), dtype="float32", name="beta_tvm_tensor"
     )
     result_tensor = tvm.topi.nn.layer_norm(
-        a_tvm_tensor, gamma_tvm_tensor, beta_tvm_tensor, axis=(1, )
+        a_tvm_tensor, gamma_tvm_tensor, beta_tvm_tensor, axis=(1,)
     )
     s = te.create_schedule(result_tensor.op)
     layernorm = tvm.build(
@@ -56,9 +54,6 @@ if __name__ == "__main__":
     shape = (512, 512)
     a_np = np.random.rand(shape[0], shape[1]).astype(np.float32)
 
-    # warmup
-    benchmark_tvm(a_np.copy())
-
     # benchmark
     time_tvm, result_tvm = benchmark_tvm(a_np.copy())
     print(f"tvm: {time_tvm}")
@@ -78,7 +73,12 @@ if __name__ == "__main__":
     print(f"torch: {time_torch}")
     print(result_torch)
 
-    assert np.allclose(
-        result_tvm, result_tvm_single, atol=1e-3, rtol=1e-3
-    ), f"tvm result mismatch!"
     print(f"tvm: {time_tvm}, tvm_single: {time_tvm_single}")
+
+    assert np.allclose(
+        result_tvm, result_torch, atol=1e-3, rtol=1e-3
+    ), f"tvm result mismatch!"
+    assert np.allclose(
+        result_tvm_single, result_torch, atol=1e-3, rtol=1e-3
+    ), f"{result_tvm_single} result mismatch!"
+    print("pass")

@@ -1,6 +1,5 @@
 # Refer to: https://github.com/FlagOpen/FlagGems/blob/master/src/flag_gems/ops/layernorm.py
 
-import logging
 import math
 import os
 import time
@@ -11,56 +10,20 @@ import triton
 import triton.language as tl
 
 
-triton_config_default = {
-    "num_stages": 2,
-    "num_warps": 4,
-    "num_ctas": 1,
-}
 """
 config in: https://github.com/FlagOpen/FlagGems/blob/master/src/flag_gems/runtime/backend/_metax/tune_configs.yaml#L512
-layer_norm_persistent:
-- gen: true
-  param_map:
-    META: {}
-    num_warps: warps
-  warps:
-  - 4
-  - 8
-  - 16
+only retain the TILE_N part on triton-cpu
 """
 layer_norm_persistent_configs = [
     triton.Config(
         {},
-        num_warps=4,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {},
-        num_warps=8,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {},
-        num_warps=16,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
     ),
 ]
 
 """
 config in: https://github.com/FlagOpen/FlagGems/blob/master/src/flag_gems/runtime/backend/_metax/tune_configs.yaml#L521
+only retain the TILE_N part on triton-cpu
 layer_norm_loop:
-- gen: true
-  param_map:
-    META:
-      TILE_N: tile_n
-    num_warps: warps
-  warps:
-  - 4
-  - 8
-  - 16
   tile_n:
   - 1024
   - 2048
@@ -70,75 +33,15 @@ layer_norm_loop:
 layer_norm_loop_configs = [
     triton.Config(
         {"TILE_N": 1024},
-        num_warps=4,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
     ),
     triton.Config(
         {"TILE_N": 2048},
-        num_warps=4,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
     ),
     triton.Config(
         {"TILE_N": 4096},
-        num_warps=4,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
     ),
     triton.Config(
         {"TILE_N": 8192},
-        num_warps=4,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {"TILE_N": 1024},
-        num_warps=8,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {"TILE_N": 2048},
-        num_warps=8,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {"TILE_N": 4096},
-        num_warps=8,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {"TILE_N": 8192},
-        num_warps=8,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {"TILE_N": 1024},
-        num_warps=16,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {"TILE_N": 2048},
-        num_warps=16,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {"TILE_N": 4096},
-        num_warps=16,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
-    ),
-    triton.Config(
-        {"TILE_N": 8192},
-        num_warps=16,
-        num_stages=triton_config_default["num_stages"],
-        num_ctas=triton_config_default["num_ctas"],
     ),
 ]
 

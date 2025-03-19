@@ -4,7 +4,7 @@ import numpy as np
 import multiprocessing
 import pandas as pd
 
-from softmax_hidet import benchmark_hidet, benchmark_hidet_single
+from softmax_hidet import benchmark_hidet
 from softmax_tvm import benchmark_tvm, benchmark_tvm_single
 from softmax_triton import benchmark_triton, benchmark_triton_single
 
@@ -36,11 +36,9 @@ def run_benchmark(method_name, method_func, a_np, axis, torch_result):
     """Run a single benchmark and validate results."""
     exec_time, result = method_func(a_np, axis)
 
-    # FIXME: Check why the matmul_kernel of triton-cpu is not correct
-    if method_name not in {"triton", "triton_single"}:
-        assert np.allclose(
-            result, torch_result, atol=1e-3, rtol=1e-3
-        ), f"{method_name} result mismatch!"
+    assert np.allclose(
+        result, torch_result, atol=1e-3, rtol=1e-3
+    ), f"{method_name} result mismatch!"
 
     return {
         "Benchmark": benchmark,
@@ -91,7 +89,6 @@ def main():
         ("hidet", benchmark_hidet),
         ("tvm", benchmark_tvm),
         ("triton", benchmark_triton),
-        ("hidet_single", benchmark_hidet_single),
         ("tvm_single", benchmark_tvm_single),
         ("triton_single", benchmark_triton_single),
     ]
@@ -99,13 +96,10 @@ def main():
     print(f"Warmup...")
     for method, method_func in methods:
         run_benchmark(method, method_func, a_np, axis, torch_result)
-        
 
     for method, method_func in methods:
         print(f"Running {method} benchmark...")
-        records.append(
-            run_benchmark(method, method_func, a_np, axis, torch_result)
-        )
+        records.append(run_benchmark(method, method_func, a_np, axis, torch_result))
 
     df = pd.DataFrame(records)
     df.sort_values(by=["Benchmark", "Shape"], inplace=True)

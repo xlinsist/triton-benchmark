@@ -100,7 +100,7 @@ def benchmark_triton(a_np, axis=-1, parallel=True):
     os.environ["TRITON_CPU_BACKEND"] = "1"
     os.environ["TRITON_CPU_MAX_THREADS"] = "0" if parallel else "1"
 
-    a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
+    a = torch.tensor(a_np, device="cpu", dtype=torch.float32)
     assert a.is_contiguous(), "Matrix A must be contiguous"
     c = torch.empty_like(a)
 
@@ -110,57 +110,35 @@ def benchmark_triton(a_np, axis=-1, parallel=True):
         softmax(a, c, num_threads=0 if parallel else 1)
         end = time.perf_counter()
         times.append(end - start)
-        
+
     return np.mean(times), c.numpy()
+
 
 def benchmark_triton_single(a_np, axis=-1):
     return benchmark_triton(a_np, axis, parallel=False)
+
 
 # %%
 # Unit Test
 # ---------
 
-# %%
-# We make sure that we test our kernel on a matrix with an irregular number of rows and columns.
-# This will allow us to verify that our padding mechanism works.
-
 if __name__ == "__main__":
     triton.runtime.driver.set_active_to_cpu()
 
-    torch.manual_seed(0)
-    x = torch.randn(1823, 781, device="cpu")
-    y_triton_cpu = softmax(x)
-    y_torch_cpu = torch.softmax(x, axis=1)
-    assert torch.allclose(y_triton_cpu, y_torch_cpu), (y_triton_cpu, y_torch_cpu)
+    x = np.random.rand(1823, 781).astype(np.float32)
 
-    LINE_VALS = [
-        "triton-cpu-single",
-        "triton-cpu",
-        "torch-cpu-compile",
-        "torch-cpu-jit",
-        "torch-cpu-native",
-    ]
-    LINE_NAMES = [
-        "TritonCPU 1",
-        "TritonCPU",
-        "TorchCPU (compile)",
-        "TorchCPU (jit)",
-        "TorchCPU (native)",
-    ]
-    LINE_STYLES = [
-        ("blue", "--"),
-        ("blue", "-"),
-        ("green", "-"),
-        ("green", "--"),
-        ("green", "-."),
-    ]
+    # benchmark
+    time_triton_cpu, y_triton_cpu = benchmark_triton(x)
+    time_triton_cpu_single, y_triton_cpu_single = benchmark_triton_single(x)
 
-    if USE_GPU and triton.runtime.driver.get_active_gpus():
-        triton.runtime.driver.set_active_to_gpu()
-        x = x.to("cuda")
-        y_triton_gpu = softmax(x)
-        y_torch_gpu = torch.softmax(x, axis=1)
-        assert torch.allclose(y_triton_gpu, y_torch_gpu), (y_triton_gpu, y_torch_gpu)
-        LINE_VALS += ["triton-gpu", "torch-gpu-native", "torch-gpu-jit"]
-        LINE_NAMES += ["TritonGPU", "TorchGPU (native)", "TorchGPU (jit)"]
-        LINE_STYLES += [("yellow", "-"), ("red", "-"), ("red", "--")]
+    # torch
+    x_torch = torch.tensor(x, device="cpu", dtype=torch.float32)
+    y_torch_cpu = torch.softmax(x_torch, axis=1)
+
+    assert torch.allclose(
+        y_torch_cpu, y_triton_cpu
+    ), "triton_cpu result mismatch!"
+    assert torch.allclose(
+        y_torch_cpu, y_triton_cpu_single
+    ), "triton_cpu_single result mismatch"
+    print("pass")
