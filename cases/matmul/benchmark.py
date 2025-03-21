@@ -65,7 +65,6 @@ def main():
     records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch_single', 'Time(s)': torch_time_single, 'TuningTime(s)': 0.0})
     
     # Other methods
-    # TODO:fix trtion result mismatch
     methods = [
         ('hidet', benchmark_hidet), ('tvm', benchmark_tvm),('triton',benchmark_triton), ('autotvm', benchmark_autotvm),('ansor',benchmark_ansor),
         ('hidet_single', benchmark_hidet_single), ('tvm_single', benchmark_tvm_single), ('triton_single', benchmark_triton_single)
@@ -77,6 +76,15 @@ def main():
     
     df = pd.DataFrame(records)
     df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
+
+    df['Speedup'] = df.apply(
+        lambda row: round(df[
+        (df['Benchmark'] == row['Benchmark']) & 
+        (df['Shape'] == row['Shape']) & 
+        (df['Method'] == 'torch')
+        ]['Time(s)'].values[0] / row['Time(s)'], 4), axis=1
+    )
+
     print(df)
     df.to_csv("./performance_report.csv", index=False)
 
