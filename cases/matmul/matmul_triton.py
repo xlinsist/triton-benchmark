@@ -11,20 +11,14 @@ TUNING_TIME = {}
 triton.runtime.driver.set_active_to_cpu()
 
 # Triton Benchmark
-def get_matmul_kernel_autotune_config():
+def get_matmul_kernel_autotune_config(num_threads = 0):
     configs=[]
     for BLOCK_SIZE_M in [8, 16, 32]:
         for BLOCK_SIZE_N in [8, 16, 32]:
             for BLOCK_SIZE_K in [64]:
-                configs.append(triton.Config(kwargs={'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}))
+                configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}, num_threads = num_threads))
     return configs
 
-@triton.autotune(
-    configs=get_matmul_kernel_autotune_config(),
-    key=[],
-    tuning_time = TUNING_TIME
-)
-@triton.jit
 def triton_matmul_kernel(
         # Pointers to matrices
         a_ptr, b_ptr, c_ptr,
@@ -90,6 +84,15 @@ def triton_matmul_kernel(
     tl.store(c_ptrs, c, mask=c_mask)
 
 def benchmark_triton(shape, a_np, b_np, parallel=True):
+    fn = triton_matmul_kernel
+    fn_jit = triton.jit(fn)
+
+    fn_jit_tuned = triton.runtime.Autotuner(fn_jit, fn_jit.arg_names, reset_to_zero=None, restore_value=None,
+        configs=get_matmul_kernel_autotune_config(0 if parallel else 1),
+        key=[],
+        tuning_time = TUNING_TIME
+    )
+    
     M, N, K = shape
     a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
     b = torch.tensor(b_np, device='cpu', dtype=torch.float32)
@@ -101,12 +104,12 @@ def benchmark_triton(shape, a_np, b_np, parallel=True):
     grid = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), )
 
     # Warm-up
-    triton_matmul_kernel[grid](a, b, c, M, N, K, a.stride(0), a.stride(1), b.stride(0), b.stride(1), c.stride(0), c.stride(1))
+    fn_jit_tuned[grid](a, b, c, M, N, K, a.stride(0), a.stride(1), b.stride(0), b.stride(1), c.stride(0), c.stride(1))
 
     times = []
     for _ in range(10):
         start = time.perf_counter()
-        triton_matmul_kernel[grid](a, b, c, M, N, K, a.stride(0), a.stride(1), b.stride(0), b.stride(1), c.stride(0), c.stride(1))
+        fn_jit_tuned[grid](a, b, c, M, N, K, a.stride(0), a.stride(1), b.stride(0), b.stride(1), c.stride(0), c.stride(1))
         end = time.perf_counter()
         times.append(end - start)
     return np.mean(times), c.numpy(), TUNING_TIME['bench_time']
@@ -114,14 +117,13 @@ def benchmark_triton(shape, a_np, b_np, parallel=True):
 def benchmark_triton_single(shape, a_np, b_np):
     return benchmark_triton(shape, a_np, b_np, parallel=False)
 
-
 if __name__ == "__main__":
     M = N = K = 512
     a_np = np.random.rand(M, K).astype(np.float32)
     b_np = np.random.rand(K, N).astype(np.float32)
     shape = (M, N, K)
-    time_triton, result_triton = benchmark_triton(shape, a_np, b_np)
-    time_triton_single, result_triton_single = benchmark_triton_single(shape, a_np, b_np)
+    time_triton, result_triton, __ = benchmark_triton(shape, a_np, b_np)
+    time_triton_single, result_triton_single, __ = benchmark_triton_single(shape, a_np, b_np)
     assert np.allclose(result_triton, result_triton_single, atol=1e-3, rtol=1e-3), f"triton result mismatch!"
     print(result_triton)
     print(result_triton_single)
