@@ -35,6 +35,11 @@ def benchmark_torch(a_np, b_np, num_threads=None):
 
 def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
     """Run a single benchmark and validate results."""
+    
+    # HACK: Refresh threads number, otherwise Triton will default to single-thread mode
+    num_threads = multiprocessing.cpu_count()
+    torch.set_num_threads(num_threads)
+    
     exec_time, result, *rest = method_func(shape, a_np, b_np)
     tune_time = rest[0] if rest else 0.0
     
@@ -45,7 +50,6 @@ def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
         'Shape': shape, 
         'Method': method_name, 
         'Time(s)': exec_time, 
-        # TODO: Capture triton's tuning time
         'TuningTime(s)': tune_time
     }
 
@@ -69,11 +73,12 @@ def main():
         ('hidet', benchmark_hidet), ('tvm', benchmark_tvm),('triton',benchmark_triton), ('autotvm', benchmark_autotvm),('ansor',benchmark_ansor),
         ('hidet_single', benchmark_hidet_single), ('tvm_single', benchmark_tvm_single), ('triton_single', benchmark_triton_single)
     ]
-    
+
     for method, method_func in methods:
         print(f"Running {method} benchmark...")
         records.append(run_benchmark(method, method_func, shape, a_np, b_np, torch_result))
     
+
     df = pd.DataFrame(records)
     df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
 
@@ -90,3 +95,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
