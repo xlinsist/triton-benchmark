@@ -20,3 +20,6 @@ test_openmp*
 
 automatmul_tuning.log
 ansor_matmul.json
+
+build
+*.bak
