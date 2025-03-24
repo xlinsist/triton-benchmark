@@ -18,7 +18,7 @@
 
 test_openmp*
 
-automatmul_tuning.log
+*autotvm.log
 ansor_matmul.json
 
 build
