@@ -62,12 +62,12 @@ def benchmark_autotvm(shape, a_np, b_np):
     tuner.tune(
         n_trial=10,
         measure_option=measure_option,
-        callbacks=[autotvm.callback.log_to_file("automatmul_tuning.log")],
+        callbacks=[autotvm.callback.log_to_file("matmul_tuning_autotvm.log")],
     )
     tune_end = time.perf_counter()
     tune_time = tune_end - tune_start
 
-    with autotvm.apply_history_best("automatmul_tuning.log"):
+    with autotvm.apply_history_best("matmul_tuning_autotvm.log"):
         with tvm.target.Target("llvm"):
             s, arg_bufs = matmul(N, L, M, "float32")
             func = tvm.build(s, arg_bufs)
