@@ -68,8 +68,8 @@ def main():
     ]
     for method, method_func in methods:
         print(f"Running {method} benchmark...")
-        run_benchmark(method, method_func, shape, a_np, b_np, torch_result)
-        records.append(run_benchmark(method, method_func, shape, a_np, b_np, torch_result))
+        benchmark_res = run_benchmark(method, method_func, shape, a_np, b_np, torch_result)
+        records.append(benchmark_res)
 
     df = pd.DataFrame(records)
     df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
@@ -81,10 +81,6 @@ def main():
         ]['Time(s)'].values[0] / row['Time(s)'], 4), axis=1
     )
 
-    # TODO: triton's tuning time should be manually added to the result
-    df['TuningTime(s)'] = df.apply(
-        lambda row: np.nan if row['Method'] == 'triton' else row['TuningTime(s)'], axis=1
-    )
     print(df)
     df.to_csv("./performance_report.csv", index=False)
 
