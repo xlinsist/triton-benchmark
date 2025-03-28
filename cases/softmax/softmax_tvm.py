@@ -10,7 +10,7 @@ import tvm
 from tvm import te
 
 
-def benchmark_tvm(a_np, axis=-1):
+def benchmark_tvm(shape, a_np, axis=-1):
     times = []
     a = tvm.nd.array(a_np)
     result = tvm.nd.array(np.zeros(a_np.shape, dtype="float32"))
@@ -28,18 +28,19 @@ def benchmark_tvm(a_np, axis=-1):
     return np.mean(times), result.numpy()
 
 
-def benchmark_tvm_single(a_np, axis=-1):
-    return benchmark_tvm(a_np, axis=axis)
+def benchmark_tvm_single(shape, a_np, axis=-1):
+    return benchmark_tvm(shape, a_np, axis=axis)
 
 
 if __name__ == "__main__":
-    N = 512
-    a_np = np.random.rand(N).astype(np.float32)
+    N = M = 512
+    a_np = np.random.rand(N, M).astype(np.float32)
+    shape = (N, M)
     axis = -1
 
     # benchmarks
-    time_tvm, result_tvm = benchmark_tvm(a_np, axis)
-    time_tvm_single, result_tvm_single = benchmark_tvm_single(a_np, axis)
+    time_tvm, result_tvm = benchmark_tvm(shape, a_np, axis)
+    time_tvm_single, result_tvm_single = benchmark_tvm_single(shape, a_np, axis)
 
     # torch
     import torch

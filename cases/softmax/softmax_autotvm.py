@@ -35,7 +35,8 @@ def softmax(N, M, dtype):
     return s, [X, output]
 
 
-def benchmark_softmax(shape, x_np):
+def benchmark_autotvm(shape, x_np, axis=-1):
+    # FIXME: axis is not used in this benchmark
     N, M = shape
 
     task = autotvm.task.create("softmax_tune", args=(N, M, "float32"), target="llvm")
@@ -70,9 +71,11 @@ def benchmark_softmax(shape, x_np):
         func(x_tvm, output_tvm)
         end = time.perf_counter()
         times.append(end - start)
+
     assert np.allclose(
         ref, output_tvm.numpy(), atol=1e-3, rtol=1e-3
     ), f"tvm result mismatch!"
+
     return np.mean(times), x_tvm.numpy(), tune_time
 
 
@@ -81,5 +84,5 @@ if __name__ == "__main__":
     shape = (N, M)
 
     a_np = np.random.uniform(size=(N, M)).astype(np.float32)
-    time_autotvm, result_autotvm, tuning_time = benchmark_softmax(shape, a_np)
+    time_autotvm, result_autotvm, tuning_time = benchmark_autotvm(shape, a_np)
     print(f"res: {time_autotvm} tuning time:{tuning_time}")

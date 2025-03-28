@@ -7,7 +7,7 @@ import triton.language as tl
 import time
 import os
 
-TUNING_TIME = {}
+# TUNING_TIME = {}
 triton.runtime.driver.set_active_to_cpu()
 
 # Triton Benchmark
@@ -90,9 +90,11 @@ def benchmark_triton(shape, a_np, b_np, parallel=True):
     fn_jit_tuned = triton.runtime.Autotuner(fn_jit, fn_jit.arg_names, reset_to_zero=None, restore_value=None,
         configs=get_matmul_kernel_autotune_config(0 if parallel else 1),
         key=[],
-        tuning_time = TUNING_TIME
+        # FIXME: this is a hack to catch the tuning time of autotuner. Once we find a more elegant way, we will recapture it.
+        # tuning_time = TUNING_TIME
     )
-    
+    # tuning_time_to_return = TUNING_TIME['bench_time']
+
     M, N, K = shape
     a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
     b = torch.tensor(b_np, device='cpu', dtype=torch.float32)
@@ -112,7 +114,7 @@ def benchmark_triton(shape, a_np, b_np, parallel=True):
         fn_jit_tuned[grid](a, b, c, M, N, K, a.stride(0), a.stride(1), b.stride(0), b.stride(1), c.stride(0), c.stride(1))
         end = time.perf_counter()
         times.append(end - start)
-    return np.mean(times), c.numpy(), TUNING_TIME['bench_time']
+    return np.mean(times), c.numpy()
 
 def benchmark_triton_single(shape, a_np, b_np):
     return benchmark_triton(shape, a_np, b_np, parallel=False)
@@ -122,8 +124,8 @@ if __name__ == "__main__":
     a_np = np.random.rand(M, K).astype(np.float32)
     b_np = np.random.rand(K, N).astype(np.float32)
     shape = (M, N, K)
-    time_triton, result_triton, __ = benchmark_triton(shape, a_np, b_np)
-    time_triton_single, result_triton_single, __ = benchmark_triton_single(shape, a_np, b_np)
+    time_triton, result_triton = benchmark_triton(shape, a_np, b_np)
+    time_triton_single, result_triton_single = benchmark_triton_single(shape, a_np, b_np)
     assert np.allclose(result_triton, result_triton_single, atol=1e-3, rtol=1e-3), f"triton result mismatch!"
     print(result_triton)
     print(result_triton_single)

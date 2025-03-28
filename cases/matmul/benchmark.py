@@ -4,9 +4,9 @@ import numpy as np
 import multiprocessing
 import pandas as pd
 
-from matmul_hidet import benchmark_hidet, benchmark_hidet_single
-from matmul_tvm import benchmark_tvm, benchmark_tvm_single
-from matmul_triton import benchmark_triton, benchmark_triton_single
+from matmul_hidet import benchmark_hidet
+from matmul_tvm import benchmark_tvm
+from matmul_triton import benchmark_triton
 from matmul_autotvm import benchmark_autotvm
 from matmul_ansor import benchmark_ansor
 
@@ -14,6 +14,7 @@ benchmark = "matmul"
 
 def benchmark_torch(a_np, b_np, num_threads=None):
     """Benchmark PyTorch matmul performance."""
+
     a = torch.tensor(a_np, dtype=torch.float32)
     b = torch.tensor(b_np, dtype=torch.float32)
     
@@ -36,12 +37,8 @@ def benchmark_torch(a_np, b_np, num_threads=None):
 def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
     """Run a single benchmark and validate results."""
     
-    # HACK: Refresh threads number, otherwise Triton will default to single-thread mode
-    num_threads = multiprocessing.cpu_count()
-    torch.set_num_threads(num_threads)
-    
     exec_time, result, *rest = method_func(shape, a_np, b_np)
-    tune_time = rest[0] if rest else 0.0
+    tuning_time = rest[0] if rest else 0.0
     
     assert np.allclose(result, torch_result, atol=1e-3, rtol=1e-3), f"{method_name} result mismatch!"
     
@@ -50,12 +47,12 @@ def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
         'Shape': shape, 
         'Method': method_name, 
         'Time(s)': exec_time, 
-        'TuningTime(s)': tune_time
+        'TuningTime(s)': tuning_time
     }
 
 def main():
     """Main function to benchmark different matrix multiplication methods."""
-    shape = (512, 512, 512)
+    shape = (1024, 1024, 1024)
     a_np, b_np = (np.random.rand(shape[0], shape[2]).astype(np.float32), 
                    np.random.rand(shape[2], shape[1]).astype(np.float32))
     records = []
@@ -64,24 +61,18 @@ def main():
     print(f"Running torch benchmark...")
     torch_time, torch_result = benchmark_torch(a_np, b_np)
     records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(s)': torch_time, 'TuningTime(s)': 0.0})
-    print(f"Running torch_single benchmark...")
-    torch_time_single, _ = benchmark_torch(a_np, b_np, 1)
-    records.append({'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch_single', 'Time(s)': torch_time_single, 'TuningTime(s)': 0.0})
-    
+
     # Other methods
     methods = [
-        ('hidet', benchmark_hidet), ('tvm', benchmark_tvm),('triton',benchmark_triton), ('autotvm', benchmark_autotvm),('ansor',benchmark_ansor),
-        ('hidet_single', benchmark_hidet_single), ('tvm_single', benchmark_tvm_single), ('triton_single', benchmark_triton_single)
+        ('hidet', benchmark_hidet), ('tvm', benchmark_tvm),('triton',benchmark_triton), ('autotvm', benchmark_autotvm),('ansor',benchmark_ansor)
     ]
-
     for method, method_func in methods:
         print(f"Running {method} benchmark...")
+        run_benchmark(method, method_func, shape, a_np, b_np, torch_result)
         records.append(run_benchmark(method, method_func, shape, a_np, b_np, torch_result))
-    
 
     df = pd.DataFrame(records)
     df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
-
     df['Speedup'] = df.apply(
         lambda row: round(df[
         (df['Benchmark'] == row['Benchmark']) & 
@@ -90,9 +81,12 @@ def main():
         ]['Time(s)'].values[0] / row['Time(s)'], 4), axis=1
     )
 
+    # TODO: triton's tuning time should be manually added to the result
+    df['TuningTime(s)'] = df.apply(
+        lambda row: np.nan if row['Method'] == 'triton' else row['TuningTime(s)'], axis=1
+    )
     print(df)
     df.to_csv("./performance_report.csv", index=False)
 
 if __name__ == "__main__":
     main()
-

@@ -1,14 +1,12 @@
 # Hidet Benchmark
-# Refer to: https://hidet.org/docs/stable/gallery/hidet-script/3-kernel-functions.html
 
 import numpy as np
 import time
 import hidet
 
 
-def benchmark_hidet(a_np, axis=-1):
+def benchmark_hidet(shape, a_np, axis=-1):
     hidet.option.cache_dir("./.hidet/cache")
-    shape = a_np.shape
 
     a = hidet.graph.from_numpy(a_np)
     b = hidet.empty(shape)
@@ -24,13 +22,14 @@ def benchmark_hidet(a_np, axis=-1):
 
 
 if __name__ == "__main__":
-    N = 512
-    a_np = np.random.rand(N).astype(np.float32)
+    N = M = 512
+    a_np = np.random.rand(N, M).astype(np.float32)
+    shape = (N, M)
     axis = -1
 
     # benchmark
     start = time.perf_counter()
-    time_hidet, result_hidet = benchmark_hidet(a_np, axis)
+    time_hidet, result_hidet = benchmark_hidet(shape, a_np, axis)
     end = time.perf_counter()
     time_hidet = end - start
     print("time_hidet", time_hidet)
