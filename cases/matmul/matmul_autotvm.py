@@ -46,6 +46,8 @@ def matmul(N, L, M, dtype):
 
     # TODO: Check if autotvm can tuning params other than split factors, e.g. num_thread, unroll factor, vectorization factor, etc.
     s[C].reorder(yo, xo, k, yi, xi)
+    s[C].parallel(yo)
+    s[C].vectorize(xi)
     return s, [A, B, C]
 
 
@@ -94,4 +96,4 @@ if __name__ == "__main__":
     assert np.allclose(
         result_autotvm, result_tvm, atol=1e-3, rtol=1e-3
     ), f"tvm result mismatch!"
-    print(f"tvm: {time_autotvm} tuning time:{tuning_time}")
+    print(f"shape:{shape} tvm: {time_autotvm} tuning time:{tuning_time}")
