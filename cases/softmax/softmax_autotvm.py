@@ -2,7 +2,7 @@ import numpy as np
 import tvm
 from tvm import te
 import tvm.testing
-
+import torch
 from tvm import autotvm
 import time
 
@@ -63,8 +63,8 @@ def benchmark_autotvm(shape, x_np, axis=-1):
     dev = tvm.cpu()
     x_tvm = tvm.nd.array(x_np, device=dev)
     output_tvm = tvm.nd.empty((N, M), dtype="float32", device=dev)
-    exp_np = np.exp(x_np - np.max(x_np, axis=1, keepdims=True))
-    ref = exp_np / np.sum(exp_np, axis=1, keepdims=True)
+    x_torch = torch.tensor(x_np, dtype=torch.float32)
+    ref = torch.softmax(x_torch, 1)
     times = []
     for _ in range(10):
         start = time.perf_counter()
@@ -86,3 +86,4 @@ if __name__ == "__main__":
     a_np = np.random.uniform(size=(N, M)).astype(np.float32)
     time_autotvm, result_autotvm, tuning_time = benchmark_autotvm(shape, a_np)
     print(f"res: {time_autotvm} tuning time:{tuning_time}")
+    

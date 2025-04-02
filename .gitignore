@@ -19,7 +19,7 @@
 test_openmp*
 
 *autotvm.log
-ansor_matmul.json
+ansor*.json
 
 build
 *.bak
