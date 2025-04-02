@@ -6,15 +6,13 @@ import triton
 import triton.language as tl
 import os
 
-from config import measurement_iterations, warmup_iterations
-
 from BenchmarkConv2d import BenchmarkConv2d
 
 def get_configs():
     configs = []
-    for BLOCK_NI_HO_WO in [32, 64, 128]:
-        for BLOCK_CI in [16, 32]:
-            for BLOCK_CO in [16, 32, 64]:
+    for BLOCK_NI_HO_WO in [4, 8, 32]:
+        for BLOCK_CI in [4, 8, 16, 32, 64]:
+            for BLOCK_CO in [4, 8, 16]:
                 configs.append(triton.Config({
                     'BLOCK_NI_HO_WO': BLOCK_NI_HO_WO,
                     'BLOCK_CI': BLOCK_CI,
@@ -261,6 +259,7 @@ class BenchmarkConv2dTriton(BenchmarkConv2d):
             dilation_w,
             self.groups,
         )
+        # print(f"Best config: {conv2d_kernel.best_config}")
         
         return output
 
