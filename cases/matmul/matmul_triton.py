@@ -19,6 +19,7 @@ def get_matmul_kernel_autotune_config(num_threads = 0):
                 configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}, num_threads = num_threads))
     return configs
 
+
 def triton_matmul_kernel(
         # Pointers to matrices
         a_ptr, b_ptr, c_ptr,
@@ -83,44 +84,61 @@ def triton_matmul_kernel(
     c_mask = (offs_cm[:, None] < M) & (offs_cn[None, :] < N)
     tl.store(c_ptrs, c, mask=c_mask)
 
+
 def benchmark_triton(shape, a_np, b_np, parallel=True):
     fn = triton_matmul_kernel
     fn_jit = triton.jit(fn)
-
-    fn_jit_tuned = triton.runtime.Autotuner(fn_jit, fn_jit.arg_names, reset_to_zero=None, restore_value=None,
+    fn_jit_tuned = triton.runtime.Autotuner(fn_jit, fn_jit.arg_names, 
+        reset_to_zero=None, 
+        restore_value=None,
         configs=get_matmul_kernel_autotune_config(0 if parallel else 1),
         key=[],
     )
 
     M, N, K = shape
-    a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
-    b = torch.tensor(b_np, device='cpu', dtype=torch.float32)
-    assert a.shape[1] == b.shape[0], "Incompatible dimensions"
-    assert a.is_contiguous(), "Matrix A must be contiguous"
-    assert b.is_contiguous(), "Matrix B must be contiguous"
-    c = torch.empty((M, N), device='cpu', dtype=torch.float32)
+    a = torch.tensor(a_np, dtype=torch.float32, device="cpu").contiguous()
+    b = torch.tensor(b_np, dtype=torch.float32, device="cpu").contiguous()
+    c = torch.empty((M, N), dtype=torch.float32, device="cpu")
+    assert a.shape[1] == b.shape[0], "Incompatible matrix dimensions"
+
     # 1D launch kernel where each block gets its own program.
-    grid = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), )
+    grid = lambda META: (
+        triton.cdiv(M, META["BLOCK_SIZE_M"]) * triton.cdiv(N, META["BLOCK_SIZE_N"]),
+    )
 
-    num_threads = multiprocessing.cpu_count()
-    torch.set_num_threads(num_threads)
+    torch.set_num_threads(multiprocessing.cpu_count())
 
-    # Warm-up
+    def run_triton_kernel():
+        fn_jit_tuned[grid](
+            a, b, c, M, N, K,
+            a.stride(0), a.stride(1),
+            b.stride(0), b.stride(1),
+            c.stride(0), c.stride(1)
+        )
+
+    # Get tuning time.
     tuning_before = time.perf_counter()
-    fn_jit_tuned[grid](a, b, c, M, N, K, a.stride(0), a.stride(1), b.stride(0), b.stride(1), c.stride(0), c.stride(1))
+    run_triton_kernel()
     tuning_after = time.perf_counter()
     tuning_time = tuning_after - tuning_before
 
+    # Warm up.
+    for _ in range(5):
+        run_triton_kernel()
+
     times = []
+    # Repeat to execute.
     for _ in range(10):
         start = time.perf_counter()
-        fn_jit_tuned[grid](a, b, c, M, N, K, a.stride(0), a.stride(1), b.stride(0), b.stride(1), c.stride(0), c.stride(1))
+        run_triton_kernel()
         end = time.perf_counter()
         times.append(end - start)
     return np.mean(times), c.numpy(), tuning_time
 
+
 def benchmark_triton_single(shape, a_np, b_np):
     return benchmark_triton(shape, a_np, b_np, parallel=False)
+
 
 if __name__ == "__main__":
     M = N = K = 512

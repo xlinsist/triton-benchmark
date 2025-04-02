@@ -25,9 +25,9 @@ def suppress_all_output():
 
 #matmul call from topi library
 @auto_scheduler.register_workload
-def matmul(N, L, M, dtype):
-    A = te.placeholder((N, L), name="A", dtype=dtype)
-    B = te.placeholder((L, M), name="B", dtype=dtype)
+def matmul(N, K, M, dtype):
+    A = te.placeholder((N, K), name="A", dtype=dtype)
+    B = te.placeholder((K, M), name="B", dtype=dtype)
 
     C = topi.nn.matmul(A, B)
 
@@ -36,18 +36,18 @@ def matmul(N, L, M, dtype):
 
 def benchmark_ansor(shape, a_np, b_np):
     target = tvm.target.Target("llvm")
-    N, L, M = shape
+    N, K, M = shape
     task = tvm.auto_scheduler.SearchTask(
-        func=matmul, args=(N, L, M, "float32"), target=target
+        func=matmul, args=(N, K, M, "float32"), target=target
     )
 
     # print("Computational DAG:")
     # print(task.compute_dag)
 
-    log_file = "ansor_matmul_topi.json"
+    log_path = os.path.join(os.path.dirname(__file__), "ansor_matmul_topi.json")
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=10,
-        measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
+        measure_callbacks=[auto_scheduler.RecordToFile(log_path)],
         verbose=0,
     )
 
@@ -58,7 +58,7 @@ def benchmark_ansor(shape, a_np, b_np):
 
     tune_time = tune_end - tune_start
 
-    sch, args = task.apply_best(log_file)
+    sch, args = task.apply_best(log_path)
 
     # print("Lowered TIR:")
     # print(tvm.lower(sch, args, simple_mode=True))
@@ -82,11 +82,11 @@ def benchmark_ansor(shape, a_np, b_np):
 
 
 if __name__ == "__main__":
-    N = L = M = 512
-    shape = (N, L, M)
+    N = K = M = 512
+    shape = (N, K, M)
 
-    a_np = np.random.uniform(size=(N, L)).astype(np.float32)
-    b_np = np.random.uniform(size=(L, M)).astype(np.float32)
+    a_np = np.random.uniform(size=(N, K)).astype(np.float32)
+    b_np = np.random.uniform(size=(K, M)).astype(np.float32)
 
     time_ansor, result_ansor, tuning_time = benchmark_ansor(shape, a_np, b_np)
     time_tvm, result_tvm = benchmark_tvm(shape, a_np, b_np)

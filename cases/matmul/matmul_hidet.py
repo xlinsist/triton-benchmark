@@ -8,6 +8,7 @@ from hidet.lang import attrs
 from hidet.lang.types import f32
 from hidet.lang import printf, grid
 from hidet.lang.mapping import spatial, repeat
+import os
 
 def compile_hidet_matmul(M, N, K, parallel=True):
     with hidet.script_module() as script_module:
@@ -30,7 +31,8 @@ def compile_hidet_matmul(M, N, K, parallel=True):
 
 
 def benchmark_hidet(shape, a_np, b_np, parallel=True):
-    hidet.option.cache_dir('./.hidet/cache')
+    log_path = os.path.join(os.path.dirname(__file__), ".hidet/cache")
+    hidet.option.cache_dir(log_path)
     M, N, K = shape
     module = compile_hidet_matmul(M, N, K, parallel)
     a, b, c = hidet.graph.from_numpy(a_np), hidet.graph.from_numpy(b_np), hidet.empty([M, N])
