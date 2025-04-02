@@ -1,4 +1,3 @@
-import time
 import torch
 import numpy as np
 import multiprocessing
@@ -6,6 +5,9 @@ import pandas as pd
 
 from BenchmarkConv2d import BenchmarkConv2d
 from conv2d_triton import BenchmarkConv2dTriton
+from conv2d_tvm import BenchmarkConv2dTVM, BenchmarkConv2dTVMO1
+from conv2d_hidet import BenchmarkConv2dHidet
+from conv2d_ansor import BenchmarkConv2dAnsor
 import config
 
 class BenchmarkConv2dTorch(BenchmarkConv2d):
@@ -60,6 +62,10 @@ def main():
         benchmarks: list[BenchmarkConv2d] = [
             BenchmarkConv2dTorch(),
             BenchmarkConv2dTriton(),
+            BenchmarkConv2dTVM(),
+            BenchmarkConv2dTVMO1(),
+            BenchmarkConv2dHidet(),
+            BenchmarkConv2dAnsor()
         ]
 
         print(f"Benchmarking with input shape {x_np.shape}, weight shape {w_np.shape}")
@@ -72,7 +78,6 @@ def main():
     df = pd.DataFrame(records)
     df["Time(ms)"] = df["Time(ms)"].apply(lambda x: round(x, 3))
     df["WarmUpTimes(ms)"] = df["WarmUpTimes(ms)"].apply(lambda x: ', '.join(f"{t:.3f}" for t in x))
-    df = df.sort_values(by=["Shape"])
     print("\nBenchmark Results:")
     print(df)
     df.to_csv(f"./{config.benchmark}_performance_report.csv", index=False)
