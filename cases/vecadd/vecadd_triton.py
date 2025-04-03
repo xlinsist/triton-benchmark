@@ -1,5 +1,3 @@
-# Refer to: https://github.com/triton-lang/triton-cpu/blob/main/python/tutorials/01-vector-add.py
-
 import torch
 import numpy as np
 import triton
@@ -7,31 +5,27 @@ import triton.language as tl
 import time
 import os
 
-DEFAULT_BLOCK_SIZE = 1024
-DEFAULT_TILE_SIZE = 16
+os.environ["TRITON_CPU_BACKEND"] = "1"
+triton.runtime.driver.set_active_to_cpu()
 
 
-@triton.autotune(
-    configs=[
-        triton.Config({'TILE_SIZE': 16, 'BLOCK_SIZE': 1024}, num_threads=1),
-        triton.Config({'TILE_SIZE': 32, 'BLOCK_SIZE': 1024}, num_threads=1),
-        triton.Config({'TILE_SIZE': 64, 'BLOCK_SIZE': 1024}, num_threads=1),
-        triton.Config({'TILE_SIZE': 128, 'BLOCK_SIZE': 1024}, num_threads=1),
-        triton.Config({'TILE_SIZE': 16, 'BLOCK_SIZE': 4096}, num_threads=1),
-        triton.Config({'TILE_SIZE': 32, 'BLOCK_SIZE': 4096}, num_threads=1),
-        triton.Config({'TILE_SIZE': 64, 'BLOCK_SIZE': 4096}, num_threads=1),
-        triton.Config({'TILE_SIZE': 128, 'BLOCK_SIZE': 4096}, num_threads=1),
-    ],
-    key=['n_elements'],
-)
-@triton.jit
-def add_kernel(x_ptr,  # *Pointer* to first input vector.
-                     y_ptr,  # *Pointer* to second input vector.
-                     output_ptr,  # *Pointer* to output vector.
-                     n_elements,  # Size of the vector.
-                     BLOCK_SIZE: tl.constexpr,  # Number of elements each program should process.
-                     TILE_SIZE: tl.constexpr,  # Number of elements each iteration should process.
-                     ):
+# Triton Benchmark
+def get_vector_add_kernel_autotune_config(num_threads=0):
+    configs = []
+    for BLOCK_SIZE in [1024, 4096]:
+        for TILE_SIZE in [16, 32, 64, 128]:
+            configs.append(triton.Config({'BLOCK_SIZE': BLOCK_SIZE, 'TILE_SIZE': TILE_SIZE}, num_threads=num_threads))
+    return configs
+
+
+def triton_vector_add_kernel(
+        x_ptr,
+        y_ptr,
+        output_ptr,
+        n_elements,
+        BLOCK_SIZE: tl.constexpr,
+        TILE_SIZE: tl.constexpr,
+):
     pid = tl.program_id(axis=0)
     block_start = pid * BLOCK_SIZE
     for i in range(0, tl.cdiv(BLOCK_SIZE, TILE_SIZE)):
@@ -43,29 +37,35 @@ def add_kernel(x_ptr,  # *Pointer* to first input vector.
         tl.store(output_ptr + offsets, output, mask=mask)
 
 
-def add(x: torch.Tensor, y: torch.Tensor, output: torch.Tensor):
-    n_elements = output.numel()
-    grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']), )
-    # add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=DEFAULT_BLOCK_SIZE, TILE_SIZE=DEFAULT_TILE_SIZE)
-    add_kernel[grid](x, y, output, n_elements)
-    return output
+def benchmark_triton(N, a_np, b_np, parallel=True):
+    fn = triton_vector_add_kernel
+    fn_jit = triton.jit(fn)
 
-
-def benchmark_triton(N, a_np, b_np):
-    os.environ["TRITON_CPU_BACKEND"] = "1"
-    triton.runtime.driver.set_active_to_cpu()
+    fn_jit_tuned = triton.runtime.Autotuner(fn_jit, fn_jit.arg_names, reset_to_zero=None, restore_value=None,
+                                            configs=get_vector_add_kernel_autotune_config(0 if parallel else 1),
+                                            key=[],
+                                            # FIXME: this is a hack to catch the tuning time of autotuner. Once we find a more elegant way, we will recapture it.
+                                            )
 
     a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
     b = torch.tensor(b_np, device='cpu', dtype=torch.float32)
     c = torch.empty_like(a)
+    grid = lambda META: (triton.cdiv(N, META['BLOCK_SIZE']),)
+
+    # Warm-up
+    fn_jit_tuned[grid](a, b, c, N)
 
     times = []
     for _ in range(10):
         start = time.perf_counter()
-        add(a, b, c)
+        fn_jit_tuned[grid](a, b, c, N)
         end = time.perf_counter()
         times.append(end - start)
     return np.mean(times), c.numpy()
+
+
+def benchmark_triton_single(N, a_np, b_np):
+    return benchmark_triton(N, a_np, b_np, parallel=False)
 
 
 if __name__ == "__main__":
@@ -73,4 +73,8 @@ if __name__ == "__main__":
     a_np = np.random.rand(N).astype(np.float32)
     b_np = np.random.rand(N).astype(np.float32)
     time_triton, result_triton = benchmark_triton(N, a_np, b_np)
-    print(f"triton time: {time_triton}")
+    time_triton_single, result_triton_single = benchmark_triton_single(N, a_np, b_np)
+    assert np.allclose(result_triton, result_triton_single, atol=1e-3, rtol=1e-3), f"triton result mismatch!"
+    print(result_triton)
+    print(result_triton_single)
+    print(f"triton: {time_triton}, triton_single: {time_triton_single}")
