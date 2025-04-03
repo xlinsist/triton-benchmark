@@ -2,3 +2,4 @@
 .hidet
 __pycache__
 *.csv
+*.json
