@@ -6,3 +6,5 @@ xgboost
 pandas
 matplotlib
 seaborn
+apache-tvm == 0.14.dev273
+hidet == 0.5.0
