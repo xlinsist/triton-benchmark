@@ -41,11 +41,13 @@ def benchmark_triton(N, a_np, b_np, parallel=True):
     fn = triton_vector_add_kernel
     fn_jit = triton.jit(fn)
 
+    tune_start = time.perf_counter()
     fn_jit_tuned = triton.runtime.Autotuner(fn_jit, fn_jit.arg_names, reset_to_zero=None, restore_value=None,
                                             configs=get_vector_add_kernel_autotune_config(0 if parallel else 1),
                                             key=[],
-                                            # FIXME: this is a hack to catch the tuning time of autotuner. Once we find a more elegant way, we will recapture it.
                                             )
+    tune_end = time.perf_counter()
+    tuning_time = tune_end - tune_start
 
     a = torch.tensor(a_np, device='cpu', dtype=torch.float32)
     b = torch.tensor(b_np, device='cpu', dtype=torch.float32)
@@ -61,7 +63,7 @@ def benchmark_triton(N, a_np, b_np, parallel=True):
         fn_jit_tuned[grid](a, b, c, N)
         end = time.perf_counter()
         times.append(end - start)
-    return np.mean(times), c.numpy()
+    return np.mean(times), c.numpy(), tuning_time
 
 
 def benchmark_triton_single(N, a_np, b_np):
@@ -72,9 +74,10 @@ if __name__ == "__main__":
     N = 1024 * 1024
     a_np = np.random.rand(N).astype(np.float32)
     b_np = np.random.rand(N).astype(np.float32)
-    time_triton, result_triton = benchmark_triton(N, a_np, b_np)
-    time_triton_single, result_triton_single = benchmark_triton_single(N, a_np, b_np)
+    time_triton, result_triton, tuning_time_triton = benchmark_triton(N, a_np, b_np)
+    time_triton_single, result_triton_single, tuning_time_triton_single = benchmark_triton_single(N, a_np, b_np)
     assert np.allclose(result_triton, result_triton_single, atol=1e-3, rtol=1e-3), f"triton result mismatch!"
     print(result_triton)
     print(result_triton_single)
     print(f"triton: {time_triton}, triton_single: {time_triton_single}")
+    print(f"triton tuning time: {tuning_time_triton}, triton_single tuning time: {tuning_time_triton_single}")

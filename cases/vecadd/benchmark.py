@@ -67,9 +67,11 @@ def main():
         {'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(s)': torch_time, 'TuningTime(s)': 0.0})
 
     # Other methods
-    # TODO: Benchmark tests based on Ansor should be added.
+    # TODO: Add more methods.
     methods = [
-        ('hidet', benchmark_hidet), ('tvm', benchmark_tvm), ('triton', benchmark_triton),
+        ('hidet', benchmark_hidet),
+        ('tvm', benchmark_tvm),
+        ('triton', benchmark_triton),
         ('autotvm', benchmark_autotvm)
     ]
 
@@ -88,10 +90,6 @@ def main():
                               ]['Time(s)'].values[0] / row['Time(s)'], 4), axis=1
     )
 
-    # TODO: triton's tuning time should be manually added to the result
-    df['TuningTime(s)'] = df.apply(
-        lambda row: np.nan if row['Method'] == 'triton' else row['TuningTime(s)'], axis=1
-    )
     print(df)
     df.to_csv("./performance_report.csv", index=False)
 
