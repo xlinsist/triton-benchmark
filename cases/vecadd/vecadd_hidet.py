@@ -1,45 +1,44 @@
-# Refer to: https://hidet.org/docs/stable/gallery/hidet-script/2-vector-addition.html
-
-"""
-Vector Addition
-===============
-"""
-# %%
-# In this example, we will show you how to write a program that adds two float32 vectors in hidet script.
+import numpy as np
+import time
 import hidet
 from hidet.lang import attrs
 from hidet.lang.types import f32
-
-hidet.option.cache_dir('./.hidet/cache')
-
-# %%
-# In the script function, we annotate the data type of parameter ``a``, ``b``, and ``c`` as ``f32[3]``, which means
-# a 3-element vector of 32-bit floating point numbers. In general, we can use ``dtype[shape]`` to define a tensor with
-# given shape and data type. For example, ``f32[3, 4]`` is a 3x4 float32 matrix, and ``int32[3, 4, 5]`` is a 3x4x5 int32
-# tensor.
-#
-# We can use ``for i in range(extent)`` to iterate over a range, where ``extent`` is the extent of the loop.
-with hidet.script_module() as script_module:
-
-    @hidet.script
-    def launch(a: f32[3], b: f32[3], c: f32[3]):
-        attrs.func_kind = 'public'
-
-        for i in range(10):
-            c[i] = a[i] + b[i]
+from hidet.lang import printf, grid
+from hidet.lang.mapping import spatial, repeat
 
 
-module = script_module.build()
+def compile_hidet_vecadd(N, parallel=True):
+    with hidet.script_module() as script_module:
+        @hidet.script
+        def hidet_vecadd(a: hidet.float32[N], b: hidet.float32[N], c: hidet.float32[N]):
+            attrs.func_kind = 'cpu_kernel'
+            if parallel:
+                for i in grid(N, attrs='p'):
+                    c[i] = a[i] + b[i]
+            else:
+                for i in range(N):
+                    c[i] = a[i] + b[i]
+    return script_module.build()
 
-# %%
-# Create the input and output tensors (on cpu, with f32 data type by default):
-a = hidet.randn([3])
-b = hidet.randn([3])
-c = hidet.empty([3])
 
-# %%
-# Call the compiled module with the input and output tensors
-module(a, b, c)
-print(a)
-print(b)
-print(c)
+def benchmark_hidet(N, a_np, b_np, parallel=True):
+    hidet.option.cache_dir('./.hidet/cache')
+    module = compile_hidet_vecadd(N, parallel)
+    a, b, c = hidet.graph.from_numpy(a_np), hidet.graph.from_numpy(b_np), hidet.empty([N])
+
+    times = [time.perf_counter() for _ in range(10) if not module(a, b, c) or True]
+    return (times[-1] - times[0]) / 10, c.numpy()
+
+
+def benchmark_hidet_single(N, a_np, b_np):
+    return benchmark_hidet(N, a_np, b_np, parallel=False)
+
+
+if __name__ == "__main__":
+    N = 1024
+    a_np = np.random.rand(N).astype(np.float32)
+    b_np = np.random.rand(N).astype(np.float32)
+    time_hidet, result_hidet = benchmark_hidet(N, a_np, b_np)
+    time_hidet_single, result_hidet_single = benchmark_hidet_single(N, a_np, b_np)
+    assert np.allclose(result_hidet, result_hidet_single, atol=1e-3, rtol=1e-3), f"hidet result mismatch!"
+    print(f"hidet: {time_hidet}, hidet_single: {time_hidet_single}")
