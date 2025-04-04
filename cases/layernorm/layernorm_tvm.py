@@ -11,9 +11,8 @@ import tvm
 from tvm import te
 
 
-def benchmark_tvm(a_np):
+def benchmark_tvm(shape, a_np):
     times = []
-    shape = a_np.shape
 
     a = tvm.nd.array(a_np)
     gamma = tvm.nd.array(np.ones((a_np.shape[1],), dtype="float32"))
@@ -43,8 +42,8 @@ def benchmark_tvm(a_np):
     return np.mean(times), result.numpy()
 
 
-def benchmark_tvm_single(a_np):
-    return benchmark_tvm(a_np)
+def benchmark_tvm_single(shape, a_np):
+    return benchmark_tvm(shape, a_np)
 
 
 if __name__ == "__main__":
@@ -55,11 +54,11 @@ if __name__ == "__main__":
     a_np = np.random.rand(shape[0], shape[1]).astype(np.float32)
 
     # benchmark
-    time_tvm, result_tvm = benchmark_tvm(a_np.copy())
+    time_tvm, result_tvm = benchmark_tvm(shape, a_np.copy())
     print(f"tvm: {time_tvm}")
     print(result_tvm)
 
-    time_tvm_single, result_tvm_single = benchmark_tvm_single(a_np.copy())
+    time_tvm_single, result_tvm_single = benchmark_tvm_single(shape, a_np.copy())
     print(f"tvm_single: {time_tvm_single}")
     print(result_tvm_single)
 

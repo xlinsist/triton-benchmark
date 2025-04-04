@@ -9,9 +9,9 @@ from matmul_tvm import benchmark_tvm
 from tvm import topi
 
 
-# a context manager that redirect all standard output to devnull
 @contextlib.contextmanager
 def suppress_all_output():
+    """a context manager that redirect all standard output to devnull"""
     null_device = os.devnull
     stdout_fd = os.dup(1)
 
@@ -23,12 +23,10 @@ def suppress_all_output():
             os.dup2(stdout_fd, 1)
             os.close(stdout_fd)
 
-#matmul call from topi library
 @auto_scheduler.register_workload
 def matmul(N, K, M, dtype):
     A = te.placeholder((N, K), name="A", dtype=dtype)
     B = te.placeholder((K, M), name="B", dtype=dtype)
-
     C = topi.nn.matmul(A, B)
 
     return [A, B, C]
@@ -41,9 +39,6 @@ def benchmark_ansor(shape, a_np, b_np):
         func=matmul, args=(N, K, M, "float32"), target=target
     )
 
-    # print("Computational DAG:")
-    # print(task.compute_dag)
-
     log_path = os.path.join(os.path.dirname(__file__), "ansor_matmul_topi.json")
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=10,
@@ -51,18 +46,14 @@ def benchmark_ansor(shape, a_np, b_np):
         verbose=0,
     )
 
+    # Get tuning time.
     with suppress_all_output():
         tune_start = time.perf_counter()
         task.tune(tune_option)
         tune_end = time.perf_counter()
-
     tune_time = tune_end - tune_start
 
     sch, args = task.apply_best(log_path)
-
-    # print("Lowered TIR:")
-    # print(tvm.lower(sch, args, simple_mode=True))
-
     func = tvm.build(sch, args, target)
 
     dev = tvm.cpu()
@@ -71,7 +62,12 @@ def benchmark_ansor(shape, a_np, b_np):
     c_np = np.dot(a_np, b_np)
     c_tvm = tvm.nd.empty(c_np.shape)
 
+    # Warm up.
+    for _ in range(5):
+        func(a_tvm, b_tvm, c_tvm)
+
     times = []
+    # Repeat to execute.
     for _ in range(10):
         start = time.perf_counter()
         func(a_tvm, b_tvm, c_tvm)
@@ -94,5 +90,3 @@ if __name__ == "__main__":
         result_ansor, result_tvm, atol=1e-3, rtol=1e-3
     ), f"tvm result mismatch!"
     print(f"ansor: {time_ansor} tuning time:{tuning_time}")
-    
-    

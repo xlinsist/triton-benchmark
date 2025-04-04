@@ -321,11 +321,11 @@ def layer_norm(x, normalized_shape, weight=None, bias=None, eps=1e-5):
     return LayerNorm(x, normalized_shape, weight, bias, eps)
 
 
-def benchmark_triton(a_np, parallel=True):
+def benchmark_triton(shape, a_np, parallel=True):
     os.environ["TRITON_CPU_BACKEND"] = "1"
     os.environ["TRITON_CPU_MAX_THREADS"] = "0" if parallel else "1"
 
-    M, N = a_np.shape
+    M, N = shape
     a = torch.tensor(a_np, device="cpu", dtype=torch.float32)
     assert a.is_contiguous(), "Matrix A must be contiguous"
 
@@ -339,25 +339,26 @@ def benchmark_triton(a_np, parallel=True):
     return np.mean(times), result.numpy()
 
 
-def benchmark_triton_single(a_np):
-    return benchmark_triton(a_np, parallel=False)
+def benchmark_triton_single(shape, a_np):
+    return benchmark_triton(shape, a_np, parallel=False)
 
 
 if __name__ == "__main__":
     #################### unit test ####################
     np.random.seed(0)
     M, N = 512, 512
+    shape = (M, N)
     a_np = np.random.rand(M, N).astype(np.float32)
     a = torch.tensor(a_np, device="cpu", dtype=torch.float32)
     assert a.is_contiguous(), "Matrix A must be contiguous"
 
     # triton
-    time_triton, result = benchmark_triton(a_np)
+    time_triton, result = benchmark_triton(shape, a_np)
     print("time_triton", time_triton)
     print("result", result)
 
     # triton_single
-    time_triton_single, result_single = benchmark_triton_single(a_np)
+    time_triton_single, result_single = benchmark_triton_single(shape, a_np)
     print("time_triton_single", time_triton_single)
     print("result_single", result_single)
 

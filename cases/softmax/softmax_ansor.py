@@ -7,9 +7,10 @@ from tvm import te, auto_scheduler
 import torch
 
 
-# a context manager that redirect all standard output to devnull
 @contextlib.contextmanager
 def suppress_all_output():
+    """a context manager that redirect all standard output to devnull"""
+
     null_device = os.devnull
     stdout_fd = os.dup(1)
 
@@ -46,41 +47,39 @@ def benchmark_ansor(shape, x_np):
         func=softmax, args=(N, M, "float32"), target=target
     )
 
-    # print("Computational DAG:")
-    # print(task.compute_dag)
-
-    log_file = "ansor_softmax.json"
+    log_path = os.path.join(os.path.dirname(__file__), "ansor_softmax.json")
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=10,
-        measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
+        measure_callbacks=[auto_scheduler.RecordToFile(log_path)],
         verbose=0,
     )
 
+    # Get tuning time.
     with suppress_all_output():
         tune_start = time.perf_counter()
         task.tune(tune_option)
         tune_end = time.perf_counter()
-
     tune_time = tune_end - tune_start
 
-    sch, args = task.apply_best(log_file)
-
-    # print("Lowered TIR:")
-    # print(tvm.lower(sch, args, simple_mode=True))
-
+    sch, args = task.apply_best(log_path)
     func = tvm.build(sch, args, target)
 
     dev = tvm.cpu()
     x_tvm = tvm.nd.array(x_np, device=dev)
-
     output_tvm = tvm.nd.empty(x_np.shape)
 
+    # Warm up.
+    for _ in range(5):
+        func(x_tvm, output_tvm)
+
     times = []
+    # Repeat to execute.
     for _ in range(10):
         start = time.perf_counter()
         func(x_tvm, output_tvm)
         end = time.perf_counter()
         times.append(end - start)
+
     return np.mean(times), output_tvm.numpy(), tune_time
 
 
@@ -97,4 +96,3 @@ if __name__ == "__main__":
         ref = torch.softmax(x_torch, 1)
     assert np.allclose(ref, result_ansor, atol=1e-3, rtol=1e-3), f"tvm result mismatch!"
     print(f"ansor: {time_ansor} tuning time:{tuning_time}")
-    

@@ -103,4 +103,3 @@ if __name__ == "__main__":
     ), f"tvm result mismatch!"
 
     print(f"ansor: {time_ansor} tuning time:{tuning_time}")
-    

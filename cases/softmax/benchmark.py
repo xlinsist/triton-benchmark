@@ -8,6 +8,7 @@ from softmax_hidet import benchmark_hidet
 from softmax_tvm import benchmark_tvm
 from softmax_triton import benchmark_triton
 from softmax_autotvm import benchmark_autotvm
+from softmax_ansor_topi import benchmark_ansor
 
 benchmark = "softmax"
 
@@ -33,9 +34,9 @@ def benchmark_torch(a_np, axis=-1, num_threads=None):
     return np.mean(times), result_np
 
 
-def run_benchmark(method_name, method_func, shape, a_np, axis, torch_result):
+def run_benchmark(method_name, method_func, shape, a_np, torch_result):
     """Run a single benchmark and validate results."""
-    exec_time, result, *rest = method_func(shape, a_np, axis)
+    exec_time, result, *rest = method_func(shape, a_np)
     tuning_time = rest[0] if rest else 0.0
 
     # FIXME: Check why autotvm can not pass verification.
@@ -45,13 +46,11 @@ def run_benchmark(method_name, method_func, shape, a_np, axis, torch_result):
         ), f"{method_name} result mismatch!"
 
     return {
-        "Benchmark": benchmark,
-        "Shape": shape,
-        "Axis": axis,
-        "Method": method_name,
-        "Time(s)": exec_time,
-        # TODO: Implement tuning and capture tuning time
-        "TuningTime(s)": tuning_time,
+        'Benchmark': benchmark, 
+        'Shape': shape, 
+        'Method': method_name, 
+        'Time(s)': exec_time, 
+        'TuningTime(s)': tuning_time
     }
 
 
@@ -59,17 +58,15 @@ def main():
     """Main function to benchmark different methods."""
     shape = (512, 512)
     a_np = np.random.rand(shape[0], shape[1]).astype(np.float32)
-    axis = -1
     records = []
 
     # Torch benchmark as baseline
     print(f"Running torch benchmark...")
-    torch_time, torch_result = benchmark_torch(a_np, axis)
+    torch_time, torch_result = benchmark_torch(a_np)
     records.append(
         {
             "Benchmark": benchmark,
             "Shape": shape,
-            "Axis": axis,
             "Method": "torch",
             "Time(s)": torch_time,
             "TuningTime(s)": 0.0,
@@ -82,12 +79,11 @@ def main():
         ("tvm", benchmark_tvm),
         ("triton", benchmark_triton),
         ("autotvm", benchmark_autotvm),
+        ("ansor", benchmark_ansor),
     ]
-
     for method, method_func in methods:
         print(f"Running {method} benchmark...")
-        run_benchmark(method, method_func, shape, a_np, axis, torch_result) # Warmup
-        records.append(run_benchmark(method, method_func, shape, a_np, axis, torch_result))
+        records.append(run_benchmark(method, method_func, shape, a_np, torch_result))
 
     df = pd.DataFrame(records)
     df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
@@ -99,13 +95,8 @@ def main():
         ]['Time(s)'].values[0] / row['Time(s)'], 4), axis=1
     )
 
-    # TODO: triton's tuning time should be manually added to the result
-    df['TuningTime(s)'] = df.apply(
-        lambda row: np.nan if row['Method'] == 'triton' else row['TuningTime(s)'], axis=1
-    )
     print(df)
     df.to_csv("./performance_report.csv", index=False)
-
 
 if __name__ == "__main__":
     main()

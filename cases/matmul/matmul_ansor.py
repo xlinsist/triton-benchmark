@@ -48,7 +48,7 @@ def benchmark_ansor(shape, a_np, b_np):
         func=matmul, args=(N, K, M, "float32"), target=target
     )
 
-    log_path = os.path.join(os.path.dirname(__file__), "ansor_matmul_topi.json")
+    log_path = os.path.join(os.path.dirname(__file__), "ansor_matmul.json")
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=10,
         measure_callbacks=[auto_scheduler.RecordToFile(log_path)],
