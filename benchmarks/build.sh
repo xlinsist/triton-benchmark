@@ -333,7 +333,7 @@ esac
 ################################################################################
 
 # BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
-BENCHMARKS=("softmax")
+BENCHMARKS=("matmul")
 
 for BENCHMARK in "${BENCHMARKS[@]}"; do
   # Array of "c_kernel triton_kernel driver_path tuning_arg" entries
@@ -405,9 +405,9 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
     echo "DRIVER : ${DRIVER}"
     echo "TUNNING_ARG : ${TUNNING_ARG}"
 
-    echo "building golden using gcc..."
-    build_driver gcc $BENCHMARK
-    echo "build with gcc finished."
+    # echo "building golden using gcc..."
+    # build_driver gcc $BENCHMARK
+    # echo "build with gcc finished."
 
     echo "building golden using clang..."
     build_driver clang $BENCHMARK

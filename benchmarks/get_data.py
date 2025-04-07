@@ -95,7 +95,8 @@ def find_best_triton_params(df):
 
 # 使用示例
 if __name__ == "__main__":
-    benchmarks = ["matmul", "dropout", "correlation", "layernorm", "softmax"]
+    # benchmarks = ["matmul", "dropout", "correlation", "layernorm", "softmax"]
+    benchmarks = ["matmul"]
     overall_df = pd.DataFrame()
     for benchmark in benchmarks:
         input_file = f"./build-{benchmark}/report.xls"  # 替换为你的文件路径

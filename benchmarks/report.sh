@@ -5,8 +5,8 @@ MODE="Benchmark"
 
 DIR=`dirname $0`
 
-BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
-# BENCHMARKS=("dropout")
+# BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
+BENCHMARKS=("matmul")
 
 for BENCHMARK in "${BENCHMARKS[@]}"; do
   BUILD_DIR="${DIR}/build-${BENCHMARK}"
