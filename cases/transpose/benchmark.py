@@ -1,15 +1,12 @@
 import torch
-import numpy as np
 import multiprocessing
-import pandas as pd
 
-import config
-from BenchmarkTranspose import BenchmarkTranspose
-from transpose_triton import BenchmarkTriton
-from transpose_hidet import BenchmarkHidet
-from transpose_tvm import BenchmarkTVMNaive, BenchmarkTVMO1
+from BenchmarkTranspose import BenchmarkTranspose, run_benchmarks
+from transpose_triton import BenchmarkTransposeTriton
+from transpose_hidet import BenchmarkTransposeHidet
+from transpose_tvm import BenchmarkTransposeTVMNaive, BenchmarkTransposeTVMO1
 
-class BenchmarkTorch(BenchmarkTranspose):
+class BenchmarkTransposeTorch(BenchmarkTranspose):
 
     def __init__(self):
         super().__init__('torch', True)
@@ -17,59 +14,32 @@ class BenchmarkTorch(BenchmarkTranspose):
     def preprocess(self, x_np):
         num_threads = multiprocessing.cpu_count() if self.parallel else 1
         torch.set_num_threads(num_threads)
-        return torch.tensor(x_np, device='cpu', dtype=torch.float32)
+        self.x = torch.tensor(x_np, device='cpu', dtype=torch.float32)
+        return 0.0
 
-    def process(self, x):
-        return torch.transpose(x, 0, 1).contiguous()
+    def process(self):
+        return torch.transpose(self.x, 0, 1).contiguous().numpy()
 
-def run_benchmark(benchmark, x_np, expect, parallel=False):
-    name = benchmark.name + ('_parallel' if parallel else '')
-    print(f"  Running {name}...")
-    exec_time, result, warmup_times = benchmark.benchmark(x_np)
-    
-    assert np.allclose(result, expect, atol=1e-3, rtol=1e-3), f"{name} result mismatch!"
-    
-    return {
-        'Benchmark': config.benchmark, 
-        'Shape': x_np.shape, 
-        'Method': name, 
-        'Time(ms)': exec_time, 
-        'WarmUpTimes(ms)': warmup_times
-    }
+benchmarks: list[BenchmarkTranspose] = [
+    BenchmarkTransposeTorch(),
+    BenchmarkTransposeTriton(),
+    BenchmarkTransposeTVMNaive(),
+    BenchmarkTransposeTVMO1(),
+    BenchmarkTransposeHidet(),
+    # ('autotvm', benchmark_autotvm),
+]
 
 def main():
-    """Main function to benchmark different transpose methods."""
-    shapes = [(1024, 768), (2048, 1536), (4096, 3072)]
-    records = []
-    
-    for shape in shapes:
-        M, N = shape
-        print(f"\nBenchmarking shape {shape}...")
-        x_np = np.random.rand(M, N).astype(np.float32)
-        expect = x_np.T
-        
-        benchmarks = [
-            BenchmarkTorch(),
-            BenchmarkTriton(),
-            BenchmarkTVMNaive(),
-            BenchmarkTVMO1(),
-            BenchmarkHidet(),
-            # ('autotvm', benchmark_autotvm),
-        ]
-        
-        for benchmark in benchmarks:
-            records.append(run_benchmark(benchmark, x_np, expect))
-            if config.benchmark_parallel and benchmark.parallelable:
-                records.append(run_benchmark(benchmark, x_np, expect, True))
-    
-    # Create and save the benchmark results
-    df = pd.DataFrame(records)
-    df["Time(ms)"] = df["Time(ms)"].apply(lambda x: round(x, 3))
-    df["WarmUpTimes(ms)"] = df["WarmUpTimes(ms)"].apply(lambda x: ', '.join(f"{t:.3f}" for t in x))
-    df.sort_values(by=["Shape"])
-    print("\nBenchmark Results:")
-    print(df)
-    df.to_csv(f"./{config.benchmark}_performance_report.csv", index=False)
+    df = run_benchmarks(benchmarks)
+    df['Speedup'] = df.apply(
+        lambda row: round(df[
+        (df['Benchmark'] == row['Benchmark']) &
+        (df['Shape'] == row['Shape']) &
+        (df['Method'] == 'torch')
+        ]['Time(ms)'].values[0] / row['Time(ms)'], 3), axis=1
+    )
+    print(f"\nBenchmark Results:\n{df}")
+    df.to_csv("./conv2d_performance_report.csv", index=False)
 
 if __name__ == "__main__":
     main()

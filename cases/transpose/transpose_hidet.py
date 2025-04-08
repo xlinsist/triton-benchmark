@@ -1,29 +1,20 @@
-import numpy as np
 import hidet
-from BenchmarkTranspose import BenchmarkTranspose
+from BenchmarkTranspose import BenchmarkTranspose, run_benchmarks
 
-class BenchmarkHidet(BenchmarkTranspose):
+class BenchmarkTransposeHidet(BenchmarkTranspose):
 
     def __init__(self):
         super().__init__('hidet', False)
 
     def preprocess(self, x_np):
-        return hidet.graph.from_numpy(x_np)
+        self.x = hidet.graph.from_numpy(x_np)
+        return 0.0
 
-    def process(self, x):
-        return hidet.ops.transpose(x).numpy()
+    def process(self):
+        return hidet.ops.transpose(self.x).numpy()
 
 if __name__ == "__main__":
-    M, N = 1024, 768
-    x_np = np.random.rand(M, N).astype(np.float32)
+    benchmark = BenchmarkTransposeHidet()
+    df = run_benchmarks([benchmark])
+    print(f"\nBenchmark Results:\n{df}")
 
-    benchmark = BenchmarkHidet()
-    time_hidet, result_hidet, warmup_times = benchmark.benchmark(x_np)
-
-    # Verify correctness
-    expected = x_np.transpose()
-    assert np.allclose(result_hidet, expected, atol=1e-3, rtol=1e-3), (
-        "Hidet result mismatch!"
-    )
-
-    print(f"hidet: {time_hidet}, warmup times: {warmup_times}")
