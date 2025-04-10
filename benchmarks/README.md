@@ -33,7 +33,21 @@ $ cmake -G Ninja ../llvm \
 $ ninja
 ```
 
-### **3. Edit and Build triton-cpu**
+### **3. build SLEEF**
+
+SLEEF is a dependency of triton-cpu. Although documentation of triton-cpu does not mention the need for manual building, this step is essential to avoid runtime issues.
+
+```sh
+$ cd benchmarks/
+$ cd ./triton-cpu # cloned as a submodule. Since triton-cpu is under development, this is a forked repo
+$ git submodule update --init # clone SLEEF as submodule of triton-cpu
+$ cd third_party/sleef
+$ mkdir build # provided in the SLEEF README for building the project.
+$ cmake -S . -B build
+$ cmake --build build -j --clean-first
+```
+
+### **4. Edit and Build triton-cpu**
 
 ```sh
 $ cd benchmarks
