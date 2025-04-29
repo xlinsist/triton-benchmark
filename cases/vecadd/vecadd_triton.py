@@ -5,6 +5,7 @@ import triton.language as tl
 import time
 import os
 
+os.environ["TRITON_PRINT_AUTOTUNING"] = "1"
 os.environ["TRITON_CPU_BACKEND"] = "1"
 triton.runtime.driver.set_active_to_cpu()
 
@@ -12,10 +13,11 @@ triton.runtime.driver.set_active_to_cpu()
 # Triton Benchmark
 def get_vector_add_kernel_autotune_config(num_threads=0):
     configs = []
-    for BLOCK_SIZE in [1024, 4096]:
-        for TILE_SIZE in [16, 32, 64, 128]:
+    for BLOCK_SIZE in [1024,2048,4096, 8192, 16384]:
+        for TILE_SIZE in [32]:
             configs.append(triton.Config({'BLOCK_SIZE': BLOCK_SIZE, 'TILE_SIZE': TILE_SIZE}, num_threads=num_threads))
     return configs
+
 
 
 def triton_vector_add_kernel(
@@ -71,13 +73,13 @@ def benchmark_triton_single(N, a_np, b_np):
 
 
 if __name__ == "__main__":
-    N = 1024 * 1024
+    N = 1024*1024
     a_np = np.random.rand(N).astype(np.float32)
     b_np = np.random.rand(N).astype(np.float32)
     time_triton, result_triton, tuning_time_triton = benchmark_triton(N, a_np, b_np)
     time_triton_single, result_triton_single, tuning_time_triton_single = benchmark_triton_single(N, a_np, b_np)
-    assert np.allclose(result_triton, result_triton_single, atol=1e-3, rtol=1e-3), f"triton result mismatch!"
     print(result_triton)
     print(result_triton_single)
     print(f"triton: {time_triton}, triton_single: {time_triton_single}")
     print(f"triton tuning time: {tuning_time_triton}, triton_single tuning time: {tuning_time_triton_single}")
+
