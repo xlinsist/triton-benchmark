@@ -3,3 +3,7 @@
 __pycache__
 *.csv
 *.json
+*.png
+
+*autotvm.log
+ansor*.json

@@ -5,8 +5,8 @@ MODE="Benchmark"
 
 DIR=`dirname $0`
 
-BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
-# BENCHMARKS=("dropout")
+# BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
+BENCHMARKS=("matmul")
 
 for BENCHMARK in "${BENCHMARKS[@]}"; do
 
@@ -15,7 +15,8 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
 
   THREAD=(1 8 32)
 
-  COMPILER=(triton gcc clang)
+  # COMPILER=(triton gcc clang)
+  COMPILER=(clang triton)
 
   for compiler in ${COMPILER[@]}; do
     for f_sub in `ls ${BIN_DIR}/${compiler}`; do

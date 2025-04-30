@@ -9,33 +9,27 @@ The `triton-benchmark/cases` directory **evaluates both the performance and tuni
 ### 1. Create and Activate Environment
 
 ```sh
+cd triton-benchmark/cases
 conda create -n <env_name> python=3.10
 conda activate <env_name>
-pip install -r ./cases/requirements.txt
+pip install -r requirements.txt
 ```
 
-### 2. Install Hidet and TVM
+### 2. Installing Triton-CPU from Source
 
-#### Install Hidet
-
+Triton-CPU is currently experimental and need to be installed from source. To ensure consistent versions, please use the `triton-benchmark` branch of [this forked repo](https://github.com/xlinsist/triton-cpu):
 ```sh
-pip install hidet # hidet version is 0.5.0
+cd <your-work-dir>
+git clone git@github.com:xlinsist/triton-cpu.git
+cd triton-cpu
+git checkout triton-benchmark
 ```
-
-#### Install TVM
-
-```sh
-pip install apache-tvm --pre # tvm version is 0.14.dev273
-```
-
-### 3. Installing Triton-CPU from Source
-
-Triton-CPU is currently experimental and need to be installed from source. Refer to [the official repo](https://github.com/triton-lang/triton-cpu) for installation. The triton-cpu commit id we use is `2fa1c59`.
+Then follow the README to complete the installation.
 
 ## Example of Usage
 
 ```sh
-cd cases
+cd triton-benchmark/cases
 cd matmul
 python benchmark.py
 ```

@@ -5,13 +5,14 @@ import multiprocessing
 import pandas as pd
 
 from layernorm_hidet import benchmark_hidet
-from layernorm_tvm import benchmark_tvm, benchmark_tvm_single
-from layernorm_triton import benchmark_triton, benchmark_triton_single
+from layernorm_tvm import benchmark_tvm
+from layernorm_triton import benchmark_triton
+from layernorm_ansor_topi import benchmark_ansor
 
 benchmark = "layernorm"
 
 
-def benchmark_torch(a_np, num_threads=None):
+def benchmark_torch(shape, a_np, num_threads=None):
     """Benchmark PyTorch layernorm performance."""
     a = torch.tensor(a_np, dtype=torch.float32)
 
@@ -34,7 +35,8 @@ def benchmark_torch(a_np, num_threads=None):
 
 def run_benchmark(method_name, method_func, shape, a_np, torch_result):
     """Run a single benchmark and validate results."""
-    exec_time, result = method_func(a_np)
+    exec_time, result, *rest = method_func(shape, a_np)
+    tuning_time = rest[0] if rest else 0.0
 
     assert np.allclose(
         result, torch_result, atol=1e-3, rtol=1e-3
@@ -44,9 +46,9 @@ def run_benchmark(method_name, method_func, shape, a_np, torch_result):
         "Benchmark": benchmark,
         "Shape": shape,
         "Method": method_name,
-        "Time(ms)": exec_time,
+        "Time(s)": exec_time,
         # TODO: Implement tuning and capture tuning time
-        "TuningTime(ms)": 0.0,
+        "TuningTime(s)": tuning_time,
     }
 
 
@@ -58,25 +60,14 @@ def main():
 
     # Torch benchmark as baseline
     print(f"Running torch benchmark...")
-    torch_time, torch_result = benchmark_torch(a_np)
+    torch_time, torch_result = benchmark_torch(shape, a_np)
     records.append(
         {
             "Benchmark": benchmark,
             "Shape": shape,
             "Method": "torch",
-            "Time(ms)": torch_time,
-            "TuningTime(ms)": 0.0,
-        }
-    )
-    print(f"Running torch_single benchmark...")
-    torch_time_single, _ = benchmark_torch(a_np, 1)
-    records.append(
-        {
-            "Benchmark": benchmark,
-            "Shape": shape,
-            "Method": "torch_single",
-            "Time(ms)": torch_time_single,
-            "TuningTime(ms)": 0.0,
+            "Time(s)": torch_time,
+            "TuningTime(s)": 0.0,
         }
     )
 
@@ -85,8 +76,7 @@ def main():
         ("hidet", benchmark_hidet),
         ("tvm", benchmark_tvm),
         ("triton", benchmark_triton),
-        ("tvm_single", benchmark_tvm_single),
-        ("triton_single", benchmark_triton_single),
+        ("ansor_topi", benchmark_ansor),
     ]
 
     for method, method_func in methods:
@@ -94,7 +84,15 @@ def main():
         records.append(run_benchmark(method, method_func, shape, a_np, torch_result))
 
     df = pd.DataFrame(records)
-    df.sort_values(by=["Benchmark", "Shape"], inplace=True)
+    df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
+    df['Speedup'] = df.apply(
+        lambda row: round(df[
+        (df['Benchmark'] == row['Benchmark']) & 
+        (df['Shape'] == row['Shape']) & 
+        (df['Method'] == 'torch')
+        ]['Time(s)'].values[0] / row['Time(s)'], 4), axis=1
+    )
+
     print(df)
     df.to_csv("./performance_report.csv", index=False)
 

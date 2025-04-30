@@ -18,8 +18,5 @@
 
 test_openmp*
 
-*autotvm.log
-ansor*.json
-
 build
 *.bak

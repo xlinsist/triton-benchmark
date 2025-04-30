@@ -7,9 +7,8 @@ import hidet
 import torch
 
 
-def benchmark_hidet(a_np):
+def benchmark_hidet(shape, a_np):
     hidet.option.cache_dir("./.hidet/cache")
-    shape = a_np.shape
 
     a = hidet.graph.from_numpy(a_np)
     b = hidet.empty(shape)
@@ -29,7 +28,7 @@ if __name__ == "__main__":
     a_np = np.random.rand(shape[0], shape[1]).astype(np.float32)
 
     # benchmark
-    time_hidet, result_hidet = benchmark_hidet(a_np.copy())
+    time_hidet, result_hidet = benchmark_hidet(shape, a_np.copy())
     print(f"hidet: {time_hidet}")
     print(result_hidet)
 

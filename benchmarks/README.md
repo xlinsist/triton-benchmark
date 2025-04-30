@@ -21,7 +21,7 @@ $ git submodule update --init
 ```sh
 $ cd benchmarks
 $ cd ./llvm-project  # cloned as a submodule
-$ git checkout 86b69c3 # the version we bumped currently
+$ git checkout 86b69c3 # In compliance with the triton-cpu version we bumped
 $ mkdir build
 $ cd build
 $ cmake -G Ninja ../llvm \
@@ -33,12 +33,26 @@ $ cmake -G Ninja ../llvm \
 $ ninja
 ```
 
-### **3. Edit and Build triton-cpu**
+### **3. build SLEEF**
+
+SLEEF is a dependency of triton-cpu. Although documentation of triton-cpu does not mention the need for manual building, this step is essential to avoid runtime issues.
+
+```sh
+$ cd benchmarks/
+$ cd ./triton-cpu # cloned as a submodule. Since triton-cpu is under development, this is a forked repo
+$ git submodule update --init # clone SLEEF as submodule of triton-cpu
+$ cd third_party/sleef
+$ mkdir build # provided in the SLEEF README for building the project.
+$ cmake -S . -B build
+$ cmake --build build -j --clean-first
+```
+
+### **4. Edit and Build triton-cpu**
 
 ```sh
 $ cd benchmarks
-$ cd ./triton-cpu # cloned as a submodule
-$ git checkout 2fa1c59 # the version we bumped currently
+$ cd ./triton-cpu # cloned as a submodule. Since triton-cpu is under development, this is a forked repo
+$ git checkout triton-benchmark # the version of triton-cpu we bumped currently
 $ git apply ../patch/triton-cpu-0001-driver.patch
 $ git apply ../patch/triton-cpu-0002-autotuning.patch
 $ export LLVM_BUILD_DIR=../llvm-project/build
@@ -47,7 +61,7 @@ $ LLVM_INCLUDE_DIRS=$LLVM_BUILD_DIR/include \
          LLVM_SYSPATH=$LLVM_BUILD_DIR \
          pip install -e python
 ```
-> WARNING: Currently triton-cpu may have correctness issues that need to be fixed after applying the patches. We are working on it.
+> WARNING: Currently the patches applied to triton-cpu may have correctness issues that need to be fixed. We are working on it.
 
 ## Running on x86
 
