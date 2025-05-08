@@ -22,7 +22,7 @@ def benchmark_torch(a_np, b_np, num_threads=None):
     if num_threads is None:
         num_threads = multiprocessing.cpu_count()
     torch.set_num_threads(num_threads)
-
+    _ = torch.add(a, b)
     times = [time.perf_counter() - time.perf_counter() for _ in range(10)]
     for i in range(10):
         start = time.perf_counter()
@@ -55,30 +55,30 @@ def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
 
 def main():
     """Main function to benchmark different vector addition methods."""
-    shape = 1024
-    a_np, b_np = (np.random.rand(shape).astype(np.float32),
-                  np.random.rand(shape).astype(np.float32))
+    custom_sizes = [2 ** i for i in range(12, 28)]
     records = []
-
+    for shape in custom_sizes:
+        a_np, b_np = (np.random.rand(shape).astype(np.float32),
+                      np.random.rand(shape).astype(np.float32))
     # Torch benchmark as baseline
-    print(f"Running torch benchmark...")
-    torch_time, torch_result = benchmark_torch(a_np, b_np)
-    records.append(
-        {'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(s)': torch_time, 'TuningTime(s)': 0.0})
+        print(f"Running torch benchmark for shape {shape}...")
+        torch_time, torch_result = benchmark_torch(a_np, b_np)
+        records.append(
+            {'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(s)': torch_time, 'TuningTime(s)': 0.0})
 
-    # Other methods
-    # TODO: Add more methods.
-    methods = [
-        ('hidet', benchmark_hidet),
-        ('tvm', benchmark_tvm),
-        ('triton', benchmark_triton),
-        ('autotvm', benchmark_autotvm)
-    ]
+        # Other methods
+        # TODO: Add more methods.
+        methods = [
+            ('hidet', benchmark_hidet),
+            ('tvm', benchmark_tvm),
+            ('triton', benchmark_triton),
+            ('autotvm', benchmark_autotvm)
+        ]
 
-    for method, method_func in methods:
-        print(f"Running {method} benchmark...")
-        run_benchmark(method, method_func, shape, a_np, b_np, torch_result)
-        records.append(run_benchmark(method, method_func, shape, a_np, b_np, torch_result))
+        for method, method_func in methods:
+            print(f"Running {method} benchmark for shape {shape}...")
+            run_benchmark(method, method_func, shape, a_np, b_np, torch_result)
+            records.append(run_benchmark(method, method_func, shape, a_np, b_np, torch_result))
 
     df = pd.DataFrame(records)
     df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
@@ -90,9 +90,25 @@ def main():
                               ]['Time(s)'].values[0] / row['Time(s)'], 4), axis=1
     )
 
-    print(df)
+    time_table = df.pivot(index='Shape', columns='Method', values='Time(s)')
+    print("Execution Time Table:")
+    print(time_table)
+
+    speedup_table = df.pivot(index='Shape', columns='Method', values='Speedup')
+    print("\nSpeedup Table:")
+    print(speedup_table)
+
+    tuning_time_table = df.pivot(index='Shape', columns='Method', values='TuningTime(s)')
+    print("\nTuning Time Table:")
+    print(tuning_time_table)
+
+    avg_stats = df.groupby('Method').agg(
+        {'Time(s)': 'mean', 'Speedup': 'mean', 'TuningTime(s)': 'mean'})
+    print("\nAverage Statistics Table:")
+    print(avg_stats)
     df.to_csv("./performance_report.csv", index=False)
 
 
 if __name__ == "__main__":
     main()
+

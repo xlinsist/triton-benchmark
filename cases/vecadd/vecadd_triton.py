@@ -4,7 +4,7 @@ import triton
 import triton.language as tl
 import time
 import os
-
+os.environ["TRITON_PRINT_AUTOTUNING"] = "1"
 os.environ["TRITON_CPU_BACKEND"] = "1"
 triton.runtime.driver.set_active_to_cpu()
 
@@ -12,7 +12,7 @@ triton.runtime.driver.set_active_to_cpu()
 # Triton Benchmark
 def get_vector_add_kernel_autotune_config(num_threads=0):
     configs = []
-    for BLOCK_SIZE in [1024, 4096]:
+    for BLOCK_SIZE in [1024,2048,4096, 8192, 16384]:
         for TILE_SIZE in [16, 32, 64, 128]:
             configs.append(triton.Config({'BLOCK_SIZE': BLOCK_SIZE, 'TILE_SIZE': TILE_SIZE}, num_threads=num_threads))
     return configs
@@ -81,3 +81,4 @@ if __name__ == "__main__":
     print(result_triton_single)
     print(f"triton: {time_triton}, triton_single: {time_triton_single}")
     print(f"triton tuning time: {tuning_time_triton}, triton_single tuning time: {tuning_time_triton_single}")
+
