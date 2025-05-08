@@ -9,11 +9,13 @@ from vecadd_tvm import benchmark_tvm
 from vecadd_triton import benchmark_triton
 from vecadd_autotvm import benchmark_autotvm
 
+
 benchmark = "vecadd"
 
 
 def benchmark_torch(a_np, b_np, num_threads=None):
     """Benchmark PyTorch vecadd performance."""
+
     a = torch.tensor(a_np, dtype=torch.float32)
     b = torch.tensor(b_np, dtype=torch.float32)
 
@@ -36,8 +38,11 @@ def benchmark_torch(a_np, b_np, num_threads=None):
 
 def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
     """Run a single benchmark and validate results."""
+
     exec_time, result, *rest = method_func(shape, a_np, b_np)
     tuning_time = rest[0] if rest else 0.0
+
+    assert np.allclose(result, torch_result, atol=1e-3, rtol=1e-3), f"{method_name} result mismatch!"
 
     return {
         'Benchmark': benchmark,
@@ -49,20 +54,20 @@ def run_benchmark(method_name, method_func, shape, a_np, b_np, torch_result):
 
 
 def main():
-    """Main function to benchmark different methods."""
+    """Main function to benchmark different vector addition methods."""
     custom_sizes = [2 ** i for i in range(12, 28)]
     records = []
-
     for shape in custom_sizes:
         a_np, b_np = (np.random.rand(shape).astype(np.float32),
                       np.random.rand(shape).astype(np.float32))
-
-        # Torch benchmark as baseline
+    # Torch benchmark as baseline
+        print(f"Running torch benchmark for shape {shape}...")
         torch_time, torch_result = benchmark_torch(a_np, b_np)
         records.append(
             {'Benchmark': benchmark, 'Shape': shape, 'Method': 'torch', 'Time(s)': torch_time, 'TuningTime(s)': 0.0})
 
         # Other methods
+        # TODO: Add more methods.
         methods = [
             ('hidet', benchmark_hidet),
             ('tvm', benchmark_tvm),
@@ -71,6 +76,8 @@ def main():
         ]
 
         for method, method_func in methods:
+            print(f"Running {method} benchmark for shape {shape}...")
+            run_benchmark(method, method_func, shape, a_np, b_np, torch_result)
             records.append(run_benchmark(method, method_func, shape, a_np, b_np, torch_result))
 
     df = pd.DataFrame(records)
@@ -99,7 +106,6 @@ def main():
         {'Time(s)': 'mean', 'Speedup': 'mean', 'TuningTime(s)': 'mean'})
     print("\nAverage Statistics Table:")
     print(avg_stats)
-
     df.to_csv("./performance_report.csv", index=False)
 
 
