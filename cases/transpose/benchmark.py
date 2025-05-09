@@ -36,7 +36,7 @@ def main():
         (df['Benchmark'] == row['Benchmark']) &
         (df['Shape'] == row['Shape']) &
         (df['Method'] == 'torch')
-        ]['Time(ms)'].values[0] / row['Time(ms)'], 3), axis=1
+        ]['Time(s)'].values[0] / row['Time(s)'], 3), axis=1
     )
     print(f"\nBenchmark Results:\n{df}")
     df.to_csv("./conv2d_performance_report.csv", index=False)

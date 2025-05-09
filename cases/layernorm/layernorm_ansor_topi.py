@@ -74,8 +74,10 @@ def benchmark_ansor(shape, a_np):
     beta = tvm.nd.array(np.zeros((M,), dtype="float32"))
     result = tvm.nd.array(np.zeros((N, M), dtype="float32"))
 
+    for _ in range(25):
+        func(a_tvm, gamma, beta, result)
     times = []
-    for _ in range(10):
+    for _ in range(100):
         start = time.perf_counter()
         func(a_tvm, gamma, beta, result)
         end = time.perf_counter()

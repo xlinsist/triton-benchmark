@@ -1,135 +1,123 @@
-# Refer to: https://github.com/triton-lang/triton-cpu/blob/main/python/tutorials/02-fused-softmax-cpu.py
+# Refer to: https://github.com/triton-lang/triton-cpu/blob/main/python/tutorials/03-matrix-multiplication-cpu.py
 
-import os
-import time
-import numpy as np
 import torch
-
+import numpy as np
 import triton
 import triton.language as tl
+import time
+import os
+import multiprocessing
 
-USE_GPU = False
+triton.runtime.driver.set_active_to_cpu()
+
+def get_softmax_kernel_autotune_config(num_threads = 0):
+    configs = []
+    for BLOCK_SIZE in [64, 256, 1024, 4096, 16384, 65536]:
+      for TILE_SIZE in [8, 16, 32, 64, 128]:
+        configs.append(triton.Config({'BLOCK_SIZE': BLOCK_SIZE, 'TILE_SIZE': TILE_SIZE}))
+    if(os.getenv("ENABLE_AUTOTUNING") == "softmax_kernel"):
+      assert (len(configs) > 1), "Autotuning config size need be larger than 1"
+      return configs
+
+    return [triton.Config({'BLOCK_SIZE': 1024, 'TILE_SIZE': 16})]
+
+def softmax_kernel(input_ptr, output_ptr, n_cols, input_row_stride, output_row_stride,
+                   BLOCK_SIZE: tl.constexpr, TILE_SIZE: tl.constexpr):
+    row_idx = tl.program_id(0)  # 每个线程块处理一行
+    row_start_ptr = input_ptr + row_idx * input_row_stride  
+    output_row_start_ptr = output_ptr + row_idx * output_row_stride  
+
+    # 初始化 softmax 计算的最大值和总和
+    acc_max = -float('inf')
+    acc_sum = 0.0
+
+    # 分块计算 max 值（全局归约）
+    for block_start in range(0, n_cols, BLOCK_SIZE):
+        for tile_start in range(0, BLOCK_SIZE, TILE_SIZE):
+            col_offsets = tile_start + tl.arange(0, TILE_SIZE)  
+            col_mask = (col_offsets + block_start) < n_cols  
+            input_ptrs = row_start_ptr + block_start + col_offsets
+            row = tl.load(input_ptrs, mask=col_mask, other=-float('inf'))
+            acc_max = tl.maximum(acc_max, tl.max(row, axis=0))  # 归约最大值
+
+    # 分块计算 sum(exp(row - max))（全局归约）
+    for block_start in range(0, n_cols, BLOCK_SIZE):
+        for tile_start in range(0, BLOCK_SIZE, TILE_SIZE):
+            col_offsets = tile_start + tl.arange(0, TILE_SIZE)  
+            col_mask = (col_offsets + block_start) < n_cols  
+            input_ptrs = row_start_ptr + block_start + col_offsets
+            row = tl.load(input_ptrs, mask=col_mask, other=-float('inf'))
+            row_minus_max = row - acc_max  # 减去全局最大值
+            numerator = tl.exp(row_minus_max)
+            acc_sum += tl.sum(numerator, axis=0)  # 归约 sum(exp)
+
+    # 计算 softmax 并写回
+    for block_start in range(0, n_cols, BLOCK_SIZE):
+        for tile_start in range(0, BLOCK_SIZE, TILE_SIZE):
+            col_offsets = tile_start + tl.arange(0, TILE_SIZE)  
+            col_mask = (col_offsets + block_start) < n_cols  
+            input_ptrs = row_start_ptr + block_start + col_offsets
+            output_ptrs = output_row_start_ptr + block_start + col_offsets
+
+            row = tl.load(input_ptrs, mask=col_mask, other=-float('inf'))
+            row_minus_max = row - acc_max
+            numerator = tl.exp(row_minus_max)
+            softmax_output = numerator / acc_sum  # 归一化
+            tl.store(output_ptrs, softmax_output, mask=col_mask)
 
 
-@torch.jit.script
-def naive_softmax(x):
-    """Compute row-wise softmax of X using native pytorch
-
-    We subtract the maximum element in order to avoid overflows. Softmax is invariant to
-    this shift.
-    """
-    # read  MN elements ; write M  elements
-    x_max = x.max(dim=1)[0]
-    # read MN + M elements ; write MN elements
-    z = x - x_max[:, None]
-    # read  MN elements ; write MN elements
-    numerator = torch.exp(z)
-    # read  MN elements ; write M  elements
-    denominator = numerator.sum(dim=1)
-    # read MN + M elements ; write MN elements
-    ret = numerator / denominator[:, None]
-    # in total: read 5MN + 2M elements ; wrote 3MN + 2M elements
-    return ret
-
-
-@triton.jit
-def softmax_kernel(
-    output_ptr,
-    input_ptr,
-    input_row_stride,
-    output_row_stride,
-    n_cols,
-    BLOCK_SIZE: tl.constexpr,
-):
-    # The rows of the softmax are independent, so we parallelize across those
-    row_idx = tl.program_id(0)
-    # The stride represents how much we need to increase the pointer to advance 1 row
-    row_start_ptr = input_ptr + row_idx * input_row_stride
-    # The block size is the next power of two greater than n_cols, so we can fit each
-    # row in a single block
-    col_offsets = tl.arange(0, BLOCK_SIZE)
-    input_ptrs = row_start_ptr + col_offsets
-    # Load the row into SRAM, using a mask since BLOCK_SIZE may be > than n_cols
-    row = tl.load(input_ptrs, mask=col_offsets < n_cols, other=-float("inf"))
-    # Subtract maximum for numerical stability
-    row_minus_max = row - tl.max(row, axis=0)
-    # Note that exponentiation in Triton is fast but approximate (i.e., think __expf in CUDA)
-    numerator = tl.exp(row_minus_max)
-    denominator = tl.sum(numerator, axis=0)
-    softmax_output = numerator / denominator
-    # Write back output to DRAM
-    output_row_start_ptr = output_ptr + row_idx * output_row_stride
-    output_ptrs = output_row_start_ptr + col_offsets
-    tl.store(output_ptrs, softmax_output, mask=col_offsets < n_cols)
-
-
-# %%
-# We can create a helper function that enqueues the kernel and its (meta-)arguments for any given input tensor.
-def softmax(x, y=None, num_threads=0):
-    n_rows, n_cols = x.shape
-    # The block size is the smallest power of two greater than the number of columns in `x`
-    BLOCK_SIZE = triton.next_power_of_2(n_cols)
-    # Another trick we can use is to ask the compiler to use more threads per row by
-    # increasing the number of warps (`num_warps`) over which each row is distributed.
-    # You will see in the next tutorial how to auto-tune this value in a more natural
-    # way so you don't have to come up with manual heuristics yourself.
-    num_warps = 4
-    if BLOCK_SIZE >= 2048:
-        num_warps = 8
-    if BLOCK_SIZE >= 4096:
-        num_warps = 16
-    # Allocate output
-    if y is None:
-        y = torch.empty_like(x)
-    # Enqueue kernel. The 1D launch grid is simple: we have one kernel instance per row of
-    # the input matrix
-    softmax_kernel[(n_rows,)](
-        y,
-        x,
-        x.stride(0),
-        y.stride(0),
-        n_cols,
-        num_warps=num_warps,
-        BLOCK_SIZE=BLOCK_SIZE,
-        num_threads=num_threads,
+def benchmark_triton(shape, a_np, parallel=True):
+    fn = softmax_kernel
+    fn_jit = triton.jit(fn)
+    fn_jit_tuned = triton.runtime.Autotuner(fn_jit, fn_jit.arg_names, 
+        reset_to_zero=None, 
+        restore_value=None,
+        configs=get_softmax_kernel_autotune_config(0 if parallel else 1),
+        key=[],
     )
-    return y
+    M, N = shape
+    a = torch.tensor(a_np, dtype=torch.float32, device="cpu").contiguous()
+    b = torch.empty((M, N), dtype=torch.float32, device="cpu")
+    torch.set_num_threads(multiprocessing.cpu_count())
 
+    def run_triton_kernel():
+        fn_jit_tuned[(M, )](
+            a, b, N,
+            a.stride(0), a.stride(1),
+        )
 
-def benchmark_triton(shape, a_np, axis=-1, parallel=True):
-    os.environ["TRITON_CPU_BACKEND"] = "1"
-    os.environ["TRITON_CPU_MAX_THREADS"] = "0" if parallel else "1"
+    # Get tuning time.
+    tuning_before = time.perf_counter()
+    run_triton_kernel()
+    tuning_after = time.perf_counter()
+    tuning_time = tuning_after - tuning_before
 
-    a = torch.tensor(a_np, device="cpu", dtype=torch.float32)
-    assert a.is_contiguous(), "Matrix A must be contiguous"
-    c = torch.empty_like(a)
+    # Warm up.
+    for _ in range(25):
+        run_triton_kernel()
 
     times = []
-    for _ in range(10):
+    # Repeat to execute.
+    for _ in range(100):
         start = time.perf_counter()
-        softmax(a, c, num_threads=0 if parallel else 1)
+        run_triton_kernel()
         end = time.perf_counter()
         times.append(end - start)
+    return np.mean(times), b.numpy(), tuning_time
 
-    return np.mean(times), c.numpy()
 
-
-def benchmark_triton_single(shape, a_np, axis=-1):
-    return benchmark_triton(shape, a_np, axis, parallel=False)
+def benchmark_triton_single(shape, a_np):
+    return benchmark_triton(shape, a_np, parallel=False)
 
 
 if __name__ == "__main__":
-    triton.runtime.driver.set_active_to_cpu()
-
-    M, N = 512, 512
-    x = np.random.rand(M, N).astype(np.float32)
+    M = N = 512
+    a_np = np.random.rand(M, N).astype(np.float32)
     shape = (M, N)
-
-    # benchmark
-    time_triton_cpu, y_triton_cpu = benchmark_triton(shape, x)
-    time_triton_cpu_single, y_triton_cpu_single = benchmark_triton_single(shape, x)
-
-    assert np.allclose(
-        y_triton_cpu_single, y_triton_cpu
-    ), "triton_cpu single result mismatch!"
-    print("pass")
+    time_triton, result_triton, tuning_time = benchmark_triton(shape, a_np)
+    time_triton_single, result_triton_single, tuning_time_single = benchmark_triton_single(shape, a_np)
+    assert np.allclose(result_triton, result_triton_single, atol=1e-3, rtol=1e-3), f"triton result mismatch!"
+    print(result_triton)
+    print(result_triton_single)
+    print(f"triton: {time_triton} Tuning Time:{tuning_time}") 
+    print(f"triton_single: {time_triton_single} Tuning Time:{tuning_time_single}")

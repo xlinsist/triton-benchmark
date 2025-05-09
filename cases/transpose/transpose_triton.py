@@ -78,4 +78,3 @@ if __name__ == "__main__":
     benchmark = BenchmarkTransposeTriton()
     df = run_benchmarks([benchmark])
     print(f"\nBenchmark Results:\n{df}")
-

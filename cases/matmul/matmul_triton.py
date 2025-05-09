@@ -13,9 +13,9 @@ triton.runtime.driver.set_active_to_cpu()
 # Triton Benchmark
 def get_matmul_kernel_autotune_config(num_threads = 0):
     configs=[]
-    for BLOCK_SIZE_M in [8, 16, 32]:
-        for BLOCK_SIZE_N in [8, 16, 32]:
-            for BLOCK_SIZE_K in [64]:
+    for BLOCK_SIZE_M in [16, 32, 64]:
+        for BLOCK_SIZE_N in [16, 32, 64]:
+            for BLOCK_SIZE_K in [32, 64, 128]:
                 configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}, num_threads = num_threads))
     return configs
 
@@ -123,12 +123,12 @@ def benchmark_triton(shape, a_np, b_np, parallel=True):
     tuning_time = tuning_after - tuning_before
 
     # Warm up.
-    for _ in range(5):
+    for _ in range(25):
         run_triton_kernel()
 
     times = []
     # Repeat to execute.
-    for _ in range(10):
+    for _ in range(100):
         start = time.perf_counter()
         run_triton_kernel()
         end = time.perf_counter()

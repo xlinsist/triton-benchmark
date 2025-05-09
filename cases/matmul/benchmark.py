@@ -25,23 +25,23 @@ def run_benchmark(method_name, method_func, shape, a_np, b_np):
 
 
 def main():
-    # TODO: Add more shapes.
-    shape = (1024, 1024, 1024)
-    a_np, b_np = (np.random.rand(shape[0], shape[2]).astype(np.float32), 
-                   np.random.rand(shape[2], shape[1]).astype(np.float32))
-
+    shapes = [(64, 64, 64), (128, 128, 128), (256, 256, 256)]
     records = []
-    methods = [
-        ("torch", benchmark_torch),
-        ("hidet", benchmark_hidet),
-        ("tvm", benchmark_tvm),
-        ("triton", benchmark_triton),
-        ("autotvm", benchmark_autotvm),
-        ("ansor", benchmark_ansor),
-    ]
-    for method, method_func in methods:
-        print(f"Running {method} benchmark...")
-        records.append(run_benchmark(method, method_func, shape, a_np, b_np))
+
+    for shape in shapes:
+        a_np, b_np = (np.random.rand(shape[0], shape[2]).astype(np.float32), 
+                       np.random.rand(shape[2], shape[1]).astype(np.float32))
+        methods = [
+            ("torch", benchmark_torch),
+            ("hidet", benchmark_hidet),
+            ("tvm", benchmark_tvm),
+            ("triton", benchmark_triton),
+            ("autotvm", benchmark_autotvm),
+            ("ansor", benchmark_ansor),
+        ]
+        for method, method_func in methods:
+            print(f"Running {method} benchmark for shape {shape}...")
+            records.append(run_benchmark(method, method_func, shape, a_np, b_np))
 
     df = pd.DataFrame(records)
     df.sort_values(by=['Benchmark', 'Shape'], inplace=True)

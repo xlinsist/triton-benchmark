@@ -61,12 +61,12 @@ def benchmark_autotvm(shape, a_np, b_np):
     c_tvm = tvm.nd.empty(c_np.shape)
 
     # Warm up.
-    for _ in range(5):
+    for _ in range(25):
         func(tvm.nd.array(a_np), tvm.nd.array(b_np), c_tvm)
 
     times = []
     # Repeat to execute.
-    for _ in range(10):
+    for _ in range(100):
         start = time.perf_counter()
         func(tvm.nd.array(a_np), tvm.nd.array(b_np), c_tvm)
         end = time.perf_counter()

@@ -13,12 +13,12 @@ def benchmark_torch(shape, a_np, b_np, num_threads=None):
     torch.set_num_threads(num_threads)
 
     # Warm up.
-    for _ in range(5):
+    for _ in range(25):
         torch.matmul(a, b)
 
     times = []
     # Repeat to execute.
-    for _ in range(10):
+    for _ in range(100):
         start = time.perf_counter()
         result = torch.matmul(a, b)
         end = time.perf_counter()

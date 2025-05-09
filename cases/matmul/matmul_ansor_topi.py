@@ -63,12 +63,12 @@ def benchmark_ansor(shape, a_np, b_np):
     c_tvm = tvm.nd.empty(c_np.shape)
 
     # Warm up.
-    for _ in range(5):
+    for _ in range(25):
         func(a_tvm, b_tvm, c_tvm)
 
     times = []
     # Repeat to execute.
-    for _ in range(10):
+    for _ in range(100):
         start = time.perf_counter()
         func(a_tvm, b_tvm, c_tvm)
         end = time.perf_counter()

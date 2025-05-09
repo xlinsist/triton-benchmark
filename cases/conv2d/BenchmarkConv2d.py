@@ -32,7 +32,7 @@ class BenchmarkConv2d(ABC):
         start = time.perf_counter()
         f(*args)
         end = time.perf_counter()
-        return round((end - start) * 1000, 3)
+        return round((end - start), 3)
 
     def benchmark(self, x_np, w_np, expected, b_np=None, stride=1, padding=0, dilation=1, groups=1, parallel=True):
         """ Run benchmark
@@ -63,16 +63,16 @@ class BenchmarkConv2d(ABC):
             'Benchmark': benchmark_name,
             'Shape': f"input: {x_np.shape}, out: {w_np.shape}",
             'Method': self.name,
-            'Time(ms)': exec_time,
-            'TuningTime(ms)': tuning_time
+            'Time(s)': exec_time,
+            'TuningTime(s)': tuning_time
         }
 
 def run_benchmarks(benchmarks: List[BenchmarkConv2d]):
     configs = [
         # (batch_size, channels_in, height, width, channels_out, kernel_size, stride, padding, dilation, groups)
-        (1, 3, 32, 32, 16, (3, 3), (1, 1), (1, 1), (1, 1), 1),
-        (1, 3, 64, 64, 32, (3, 3), (1, 1), (1, 1), (1, 1), 1),
-        (1, 64, 56, 56, 64, (3, 3), (1, 1), (1, 1), (1, 1), 1),
+        # (1, 3, 32, 32, 16, (3, 3), (1, 1), (1, 1), (1, 1), 1),
+        # (1, 3, 64, 64, 32, (3, 3), (1, 1), (1, 1), (1, 1), 1),
+        # (1, 64, 56, 56, 64, (3, 3), (1, 1), (1, 1), (1, 1), 1),
         (8, 3, 224, 224, 64, (7, 7), (2, 2), (3, 3), (1, 1), 1),  # ResNet first layer
     ]
 
@@ -105,7 +105,7 @@ def run_benchmarks(benchmarks: List[BenchmarkConv2d]):
         (df['Benchmark'] == row['Benchmark']) &
         (df['Shape'] == row['Shape']) &
         (df['Method'] == 'torch')
-        ]['Time(ms)'].values[0] / row['Time(ms)'], 3), axis=1
+        ]['Time(s)'].values[0] / row['Time(s)'], 3), axis=1
     )
     setattr(df, 'name', benchmark_name)
     print(f"\nBenchmark Results:\n{df}")

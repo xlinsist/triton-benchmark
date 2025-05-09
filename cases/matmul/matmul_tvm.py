@@ -46,7 +46,12 @@ def benchmark_tvm(shape, a_np, b_np, parallel=True):
     b = tvm.nd.array(b_np)
     c = tvm.nd.array(np.zeros((M, N), dtype="float32"))
     times = []
-    for _ in range(10):
+    # Warmup.
+    for _ in range(25):
+        lib(M, N, K, a, b, c, parallel)
+    
+    # Repeat to execute.
+    for _ in range(100):
         start = time.perf_counter()
         lib(M, N, K, a, b, c, parallel)
         end = time.perf_counter()

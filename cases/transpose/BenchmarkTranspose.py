@@ -29,7 +29,7 @@ class BenchmarkTranspose(ABC):
         start = time.perf_counter()
         f(*args)
         end = time.perf_counter()
-        return round((end - start) * 1000, 3)
+        return round((end - start), 3)
 
     def benchmark(self, x_np, expected, parallel = True):
         self.parallel = parallel
@@ -45,12 +45,13 @@ class BenchmarkTranspose(ABC):
             'Benchmark': benchmark_name,
             'Shape': f"{x_np.shape}",
             'Method': self.name,
-            'Time(ms)': exec_time,
-            'TuningTime(ms)': tuning_time
+            'Time(s)': exec_time,
+            'TuningTime(s)': tuning_time
         }
 
 def run_benchmarks(benchmarks: List[BenchmarkTranspose]):
-    shapes = [(1024, 768), (2048, 1536), (4096, 3072)]
+    shapes = [(4096, 3072)]
+    # shapes = [(1024, 768), (2048, 1536), (4096, 3072)]
 
     records = []
     for shape in shapes:
