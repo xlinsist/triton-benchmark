@@ -74,8 +74,8 @@ def naive_softmax(x):
 
 def get_softmax_kernel_autotune_config():
     configs = []
-    for BLOCK_SIZE in [64, 256, 1024, 4096, 16384, 65536]:
-      for TILE_SIZE in [8, 16, 32, 64, 128]:
+    for BLOCK_SIZE in [64, 256, 1024, 4096]:
+      for TILE_SIZE in [4, 8, 16, 32, 64]:
         configs.append(triton.Config({'BLOCK_SIZE': BLOCK_SIZE, 'TILE_SIZE': TILE_SIZE}))
     if(os.getenv("ENABLE_AUTOTUNING") == "softmax_kernel"):
       assert (len(configs) > 1), "Autotuning config size need be larger than 1"
@@ -115,7 +115,8 @@ def softmax_kernel(output_ptr, input_ptr, input_row_stride, output_row_stride,
             input_ptrs = row_start_ptr + block_start + col_offsets
             row = tl.load(input_ptrs, mask=col_mask, other=-float('inf'))
             row_minus_max = row - acc_max  # 减去全局最大值
-            numerator = tl.exp(row_minus_max)
+            # numerator = tl.exp(row_minus_max)
+            numerator = 1 + row_minus_max + (row_minus_max * row_minus_max) / 2
             acc_sum += tl.sum(numerator, axis=0)  # 归约 sum(exp)
 
     # 计算 softmax 并写回
@@ -128,7 +129,8 @@ def softmax_kernel(output_ptr, input_ptr, input_row_stride, output_row_stride,
 
             row = tl.load(input_ptrs, mask=col_mask, other=-float('inf'))
             row_minus_max = row - acc_max
-            numerator = tl.exp(row_minus_max)
+            # numerator = tl.exp(row_minus_max)
+            numerator = 1 + row_minus_max + (row_minus_max * row_minus_max) / 2
             softmax_output = numerator / acc_sum  # 归一化
             tl.store(output_ptrs, softmax_output, mask=col_mask)
 

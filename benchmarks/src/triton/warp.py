@@ -8,7 +8,7 @@ triton.runtime.driver.set_active_to_cpu()
 
 def get_warp_kernel_autotune_config():
     configs = [
-        triton.Config({'BLOCK_SIZE_W': 1}),
+        # triton.Config({'BLOCK_SIZE_W': 1}),
         triton.Config({'BLOCK_SIZE_W': 4}),
         triton.Config({'BLOCK_SIZE_W': 8}),
         triton.Config({'BLOCK_SIZE_W': 16}),
@@ -91,6 +91,7 @@ def warp_kernel(
         tl.store(out_ptr + out_idx, out, mask=mask)
 
 def warp(src_arr, offset_arr, out_arr):
+
     src_arr = src_arr.contiguous()
     offset_arr = offset_arr.contiguous()
     out_arr = out_arr.contiguous()
@@ -100,7 +101,6 @@ def warp(src_arr, offset_arr, out_arr):
 
     # Compute grid dimensions
     grid = lambda meta: (height, channel, 1)
-
     # Launch the Triton kernel
     warp_kernel[grid](
         src_arr, offset_arr, out_arr, channel, height, width

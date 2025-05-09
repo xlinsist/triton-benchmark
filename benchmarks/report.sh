@@ -3,10 +3,11 @@
 # MODE="Accuracy"
 MODE="Benchmark"
 
+# DIR=`dirname $0`/build-rv
 DIR=`dirname $0`
 
-# BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
-BENCHMARKS=("matmul")
+# BENCHMARKS=("matmul" "softmax" "correlation" "layernorm"  "dropout" "rope" "resize")
+BENCHMARKS=("softmax")
 
 for BENCHMARK in "${BENCHMARKS[@]}"; do
   BUILD_DIR="${DIR}/build-${BENCHMARK}"
@@ -23,8 +24,8 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
   # Keyword to extract the kernel running time
   # STAT_KEYWORD=(C Triton)
 
-  COMPILER=(gcc clang triton)
-  THREADS=(1 8 32)
+  COMPILER=(clang triton)
+  THREADS=(1 4 8)
 
   TRITON_KERNELS=`ls ${BIN_DIR}/triton/`
   # TRITON_KERNELS=layernorm

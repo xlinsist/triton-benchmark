@@ -43,6 +43,8 @@ def parse_performance_data(file_path, benchmark):
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_correlation_kernel_(\d+_\d+))?', method_info)
             elif benchmark == "layernorm":
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:__layer_norm_fwd_fused_(\d+))?', method_info)
+            elif benchmark == "rope":
+                match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_rope_kernel_(\d+))?', method_info)
             else:
                 match = None
             
@@ -95,18 +97,20 @@ def find_best_triton_params(df):
 
 # 使用示例
 if __name__ == "__main__":
-    # benchmarks = ["matmul", "dropout", "correlation", "layernorm", "softmax"]
-    benchmarks = ["matmul"]
+    # benchmarks = ["matmul", "softmax", "correlation", "layernorm", "dropout", "rope", "resize"]
+    benchmarks = ["softmax"]
+
     overall_df = pd.DataFrame()
     for benchmark in benchmarks:
-        input_file = f"./build-{benchmark}/report.xls"  # 替换为你的文件路径
+        # input_file = f"./build-rv/build-{benchmark}/report.xls"
+        input_file = f"./build-{benchmark}/report.xls"
 
         if not os.path.exists(input_file):
             print(f"Warning: {input_file} not found. Skipping {benchmark}...")
             continue
 
         origin_df = parse_performance_data(input_file, benchmark)
-        # origin_df.to_csv(f"./build-{benchmark}/performance_report.csv", index=False)
+        origin_df.to_csv(f"./build-{benchmark}/performance_report.csv", index=False)
 
         triton_df = find_best_triton_params(origin_df)
 

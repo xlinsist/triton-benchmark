@@ -115,6 +115,7 @@ build_triton_kernel_lib_and_driver() {
   ### FIXME: How to specify which kernel to enable among multiple kernels, and whether to enable them simultaneously
   ### Two parameters may be needed to control, one parameter controls ENABLE, and the other parameter controls which ENABLE.
   ENABLE_AUTOTUNING=${TUNNING_ARG} KERNEL_LAUNCHER_INCLUDE_DIR=${KERNEL_LAUNCHER_INCLUDE_DIR} KERNEL_AUX_FILE_DIR=${KERNEL_AUX_FILE_DIR} ${PYC} ${TRITON_KERNEL}
+  # echo "ENABLE_AUTOTUNING=${TUNNING_ARG} KERNEL_LAUNCHER_INCLUDE_DIR=${KERNEL_LAUNCHER_INCLUDE_DIR} KERNEL_AUX_FILE_DIR=${KERNEL_AUX_FILE_DIR} ${PYC} ${TRITON_KERNEL}"
 
   driver_name=`basename ${DRIVER} .cpp`
 
@@ -168,22 +169,12 @@ build_triton_kernel_lib_and_driver() {
     ${AR} rcs ${LIB_DIR}/libkernel_${TUNNING_ARG}_${block_shape}.a ${OBJ_DIR}/${name}_${TUNNING_ARG}_${block_shape}/${kernel_name}.o
     
     # Compile driver
-    if [ "$1" != "softmax" ]; then
-      # .elf suffix to avoid scp problem(same name dir and kernel)
-      ${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} \
-          -L ${LIB_DIR} -fopenmp -L${CLANG_BUILD_DIR}/lib \
-          -lkernel_${TUNNING_ARG}_${block_shape} -lsupport -latomic \
-          -std=c++17 -D${KERNEL_ENABLE} -fPIC \
-          -o ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf
-    else
-      # Only when benchmark="softmax" do we need to link sleef
-      ${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} \
-          -L ${LIB_DIR} -fopenmp -L${CLANG_BUILD_DIR}/lib \
-          -lkernel_${TUNNING_ARG}_${block_shape} -lsupport -latomic \
-          -std=c++17 -D${KERNEL_ENABLE} -fPIC \
-          -L ${DIR}/triton-cpu/third_party/sleef/build/lib -lsleef \
-          -o ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf
-    fi
+    # .elf suffix to avoid scp problem(same name dir and kernel)
+    ${COMPILER} ${DRIVER} -I ${DIR}/include -I ${KERNEL_LAUNCHER_INCLUDE_DIR} \
+        -L ${LIB_DIR} -fopenmp -L${CLANG_BUILD_DIR}/lib \
+        -lkernel_${TUNNING_ARG}_${block_shape} -lsupport -latomic \
+        -std=c++17 -D${KERNEL_ENABLE} -fPIC \
+        -o ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf
 
     ${OBJDUMP} -d ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf &> ${KERNEL_BIN_DIR}/${driver_name}_${TUNNING_ARG}_${block_shape}.elf.s
 
@@ -332,8 +323,8 @@ esac
 # Main function to build driver. Make your changes here if you need
 ################################################################################
 
-# BENCHMARKS=("matmul" "layernorm" "correlation" "dropout")
-BENCHMARKS=("matmul")
+# BENCHMARKS=("matmul" "softmax" "correlation" "layernorm"  "dropout" "rope" "resize")
+BENCHMARKS=("softmax")
 
 for BENCHMARK in "${BENCHMARKS[@]}"; do
   # Array of "c_kernel triton_kernel driver_path tuning_arg" entries
@@ -345,7 +336,7 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
       ;;
     "softmax")
       drivers=(
-        "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax_kernel.cpp softmax_kernel"
+        "${SRC_DIR}/c/softmax.cpp ${SRC_DIR}/triton/softmax.py ${SRC_DIR}/main/softmax.cpp softmax_kernel"
       )
       ;;
     "layernorm")
@@ -365,17 +356,17 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
       ;;
     "resize")
       drivers=(
-        # "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp resize_kernel"
+        "${SRC_DIR}/c/resize.cpp ${SRC_DIR}/triton/resize.py ${SRC_DIR}/main/resize.cpp resize_kernel"
       )
       ;;
     "rope")
       drivers=(
-        # "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp rope_kernel"
+        "${SRC_DIR}/c/rope.cpp ${SRC_DIR}/triton/rope.py ${SRC_DIR}/main/rope.cpp rope_kernel"
       )
       ;;
     "warp")
       drivers=(
-        # "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp warp_kernel"
+        "${SRC_DIR}/c/warp.cpp ${SRC_DIR}/triton/warp.py ${SRC_DIR}/main/warp.cpp warp_kernel"
       )
       ;;
     *)

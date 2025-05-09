@@ -10,8 +10,11 @@ triton.runtime.driver.set_active_to_cpu()
 
 def get_resize_kernel_autotune_config():
     configs = [
+        triton.Config({'BLOCK_SIZE_W': 4}),
+        triton.Config({'BLOCK_SIZE_W': 8}),
         triton.Config({'BLOCK_SIZE_W': 16}),
-        triton.Config({'BLOCK_SIZE_W': 64}),
+        triton.Config({'BLOCK_SIZE_W': 32}),
+        # triton.Config({'BLOCK_SIZE_W': 64}),
     ]
     if(os.getenv("ENABLE_AUTOTUNING") == "resize_kernel"):
       assert (len(configs) > 1), "Autotuning config size need be larger than 1"

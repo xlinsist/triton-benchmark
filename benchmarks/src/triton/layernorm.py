@@ -44,8 +44,8 @@ def get_layer_norm_fwd_fused_autotune_config():
     configs = [
         # triton.Config({'BLOCK_SIZE': 1}),
         # triton.Config({'BLOCK_SIZE': 2}),
-        # triton.Config({'BLOCK_SIZE': 4}),
-        # triton.Config({'BLOCK_SIZE': 8}),
+        triton.Config({'BLOCK_SIZE': 4}),
+        triton.Config({'BLOCK_SIZE': 8}),
         triton.Config({'BLOCK_SIZE': 16}),
         triton.Config({'BLOCK_SIZE': 32}),
         triton.Config({'BLOCK_SIZE': 64})

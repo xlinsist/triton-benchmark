@@ -73,6 +73,7 @@ $ ./build.sh  # Customize sections marked with "Make your changes here if you ne
 $ ./run.sh
 $ ./report.sh
 ```
+Check the `performance_report_overall.csv` generated under `benchmarks` directory.
 
 ## Cross-compiling for RISC-V
 
@@ -97,14 +98,14 @@ $ git clone git@github.com:llvm/llvm-project.git
 $ mkdir llvm-project/build
 $ cd llvm-project/build
 $ git checkout 86b69c3 # Ensure it matches the version used by triton-cpu
-$ cmake -G Ninja ../llvm-project \
+$ cmake -G Ninja ../llvm \
     -DLLVM_ENABLE_PROJECTS="mlir;clang;openmp" \
-    -DLLVM_TARGETS_TO_BUILD="host;riscv" \
+    -DLLVM_TARGETS_TO_BUILD="host;RISCV" \
     -DOPENMP_ENABLE_LIBOMPTARGET=OFF \
     -DLLVM_ENABLE_ASSERTIONS=ON \
     -DCMAKE_BUILD_TYPE=RELEASE
 $ ninja check-mlir check-clang
-$ export CLANG_BUILD_DIR=<path-to-this-llvm-project>/build
+$ export CLANG_BUILD_DIR=<path-to-this-llvm-project>/build # For examples, export CLANG_BUILD_DIR=./llvm-project/build-86b69c-rv
 ```
 
 ### **3. Running on a RISC-V Platform**
@@ -113,7 +114,7 @@ First, use `build.sh` to cross-compile and generate ELF files locally. Then, tra
 
 ```sh
 $ cd benchmarks
-$ ./build.sh rv
+$ ./build.sh --platform rv
 $ ./copy_to_remote.sh # Modify REMOTE IP and file paths accordingly.
 $ <Use SSH to connect to the REMOTE IP>
 
@@ -127,3 +128,4 @@ $ <Use SSH to connect to the REMOTE IP>
 $ ./copy_remote_back.sh # Modify REMOTE IP and file paths accordingly.
 $ ./report.sh
 ```
+Check the `performance_report_overall.csv` generated under `benchmarks` directory.
