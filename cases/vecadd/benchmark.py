@@ -77,8 +77,8 @@ def main():
 
         for method, method_func in methods:
             print(f"Running {method} benchmark for shape {shape}...")
-            run_benchmark(method, method_func, shape, a_np, b_np, torch_result)
-            records.append(run_benchmark(method, method_func, shape, a_np, b_np, torch_result))
+            benchmark_result = run_benchmark(method, method_func, shape, a_np, b_np, torch_result)
+            records.append(benchmark_result)
 
     df = pd.DataFrame(records)
     df.sort_values(by=['Benchmark', 'Shape'], inplace=True)
