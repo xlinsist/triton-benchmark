@@ -228,7 +228,7 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
 
   # Map benchmark name to the internal kernel/tuning name used in the Python scripts.
   case "$BENCHMARK" in
-    "add")         TUNNING_ARG="add" ;;
+    "add")         TUNNING_ARG="add_kernel" ;;
     "matmul")      TUNNING_ARG="matmul_kernel" ;;
     "softmax")     TUNNING_ARG="softmax_kernel" ;;
     "layernorm")   TUNNING_ARG="_layer_norm_fwd_fused" ;;

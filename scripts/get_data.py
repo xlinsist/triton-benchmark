@@ -73,6 +73,8 @@ def parse_performance_data(file_path, benchmark):
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_matmul_kernel_(\d+_\d+_\d+))?', method_info)
             elif benchmark == "resize":
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_resize_kernel_(\d+))?', method_info)
+            elif benchmark == "add":
+                match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_add_kernel_(\d+_\d+))?', method_info)
             elif benchmark == "softmax":
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_softmax_kernel_(\d+_\d+))?', method_info)
             elif benchmark == "dropout":
@@ -83,6 +85,8 @@ def parse_performance_data(file_path, benchmark):
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:__layer_norm_fwd_fused_(\d+))?', method_info)
             elif benchmark == "rope":
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_rope_kernel_(\d+))?', method_info)
+            elif benchmark == "warp":
+                match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_warp_kernel_(\d+))?', method_info)
             else:
                 match = None
             
@@ -119,35 +123,36 @@ def parse_performance_data(file_path, benchmark):
 def find_best_triton_params(df):
     # 筛选出 method 为 triton 的数据
     triton_df = df[df['method'] == 'triton']
-    # 按 shape 和 thread 分组，并找到 time 最小的行
-    best_params = (
-        triton_df.loc[triton_df.groupby(['shape', 'thread'])['time(ms)'].idxmin()]
-        .reset_index(drop=True)
-    )
-    
+    if triton_df.empty:
+        return triton_df.copy()
+
+    # 按 shape 和 thread 分组，并找到 time 最小的所有行（处理平局情况）
+    min_times = triton_df.groupby(['shape', 'thread'])['time(ms)'].transform('min')
+    best_params = triton_df[triton_df['time(ms)'] == min_times].reset_index(drop=True)
+
     best_params['method'] = 'triton_tuned'
     return best_params
 
 
 # 使用示例
 if __name__ == "__main__":
-    benchmarks = ["matmul"]
+    benchmarks = ["add"]
+    # benchmarks = ["matmul", "softmax", "layernorm", "rope", "resize", "dropout", "correlation", "warp"]
 
     overall_df = pd.DataFrame()
     for benchmark in benchmarks:
-        input_file = f"./build-{benchmark}/report.xls"
+        input_file = f"../build-{benchmark}/report.xls"
 
         if not os.path.exists(input_file):
             print(f"Warning: {input_file} not found. Skipping {benchmark}...")
             continue
 
         origin_df = parse_performance_data(input_file, benchmark)
-        origin_df.to_csv(f"./build-{benchmark}/performance_report.csv", index=False)
+        origin_df.to_csv(f"../build-{benchmark}/performance_report.csv", index=False)
 
         if origin_df.empty:
             print(f"Warning: No data parsed from {input_file}. Skipping processing for {benchmark}.")
             continue
-
         triton_df = find_best_triton_params(origin_df)
         result_df = pd.concat([origin_df[origin_df['method'] == 'triton'], triton_df], ignore_index=True)
         result_df = result_df.sort_values(by=['shape', 'method', 'thread', 'block_param', 'vec_param'])
@@ -163,6 +168,6 @@ if __name__ == "__main__":
         # )
 
         overall_df = pd.concat([overall_df, result_df], ignore_index=True)
-    overall_df.to_csv("./performance_report_overall.csv", index=False)
+    overall_df.to_csv("../performance_report_overall.csv", index=False)
     # filter_df = filter_data(overall_df)
-    # filter_df.to_csv("./performance_report_filtered.csv", index=False)
+    # filter_df.to_csv("../performance_report_filtered.csv", index=False)

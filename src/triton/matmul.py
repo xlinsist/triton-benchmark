@@ -36,9 +36,16 @@ def get_matmul_kernel_autotune_config():
         for BLOCK_SIZE_N in [1]:
             for BLOCK_SIZE_K in [4, 8, 16, 32]:
                 configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}))
-
     for BLOCK_SIZE_M in [1]:
         for BLOCK_SIZE_N in [8]:
+            for BLOCK_SIZE_K in [4, 8, 16, 32]:
+                configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}))
+    for BLOCK_SIZE_M in [2]:
+        for BLOCK_SIZE_N in [2, 4]:
+            for BLOCK_SIZE_K in [4, 8, 16, 32]:
+                configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}))
+    for BLOCK_SIZE_M in [4]:
+        for BLOCK_SIZE_N in [2]:
             for BLOCK_SIZE_K in [4, 8, 16, 32]:
                 configs.append(triton.Config({'BLOCK_SIZE_M': BLOCK_SIZE_M, 'BLOCK_SIZE_N': BLOCK_SIZE_N, 'BLOCK_SIZE_K': BLOCK_SIZE_K}))
 

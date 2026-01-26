@@ -13,7 +13,7 @@ def get_warp_kernel_autotune_config():
         triton.Config({'BLOCK_SIZE_W': 8}),
         triton.Config({'BLOCK_SIZE_W': 16}),
         triton.Config({'BLOCK_SIZE_W': 32}),
-        triton.Config({'BLOCK_SIZE_W': 64}),
+        # triton.Config({'BLOCK_SIZE_W': 64}),
         # triton.Config({'BLOCK_SIZE_W': 128}),
         # triton.Config({'BLOCK_SIZE_W': 256}),
     ]

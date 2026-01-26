@@ -26,7 +26,7 @@ export DEFAULT_DO_CLEAN="--clean"
 # 2. Target Platform and Remote Execution
 # ==========================================
 # Target platform: "x86" or "rv" (for RISC-V).
-export PLATFORM="x86"
+export PLATFORM="rv"
 
 # Remote machine configuration for running RISC-V benchmarks.
 # Ensure you have passwordless SSH access to this machine.
@@ -49,7 +49,8 @@ export THREADS_LIST="1"
 
 # Space-separated list of benchmarks to build and run.
 # Example: "add matmul softmax layernorm correlation dropout resize rope warp"
-export BENCHMARKS_LIST="matmul"
+# export BENCHMARKS_LIST="matmul softmax layernorm correlation dropout resize rope warp"
+export BENCHMARKS_LIST="add"
 
 export MODE="Benchmark" # Or "Validation", "Test", etc.
 

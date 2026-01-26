@@ -29,7 +29,7 @@ fi
 
 # 遍历每个基准测试
 for BENCHMARK in "${BENCHMARKS[@]}"; do
-  if [ "${TARGET_ARCH}" == "rv" ]; then
+  if [ "$PLATFORM" = "rv" ]; then
     BUILD_DIR="${REMOTE_BASE}/build-${BENCHMARK}"
   else
     BUILD_DIR="${ROOT_DIR}/build-${BENCHMARK}"
