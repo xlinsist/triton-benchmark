@@ -54,7 +54,7 @@ def get_matmul_kernel_autotune_config():
       assert (len(configs) > 1), "Autotuning config size need be larger than 1"
       return configs
 
-    return [triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 8, 'BLOCK_SIZE_K': 16})]
+    return [triton.Config({'BLOCK_SIZE_M': 2, 'BLOCK_SIZE_N': 2, 'BLOCK_SIZE_K': 16})]
 
 @triton.autotune(
     configs=get_matmul_kernel_autotune_config(),

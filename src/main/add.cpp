@@ -40,8 +40,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef TRITON_KERNEL_ENABLE
   // 4. 定义 Grid
-  // BLOCK_SIZE 是 constexpr，不会出现在参数列表，但通常作为宏定义在头文件中供 grid 计算使用
-  int grid_size = std::ceil(1.0 * n_elements / add_kernel_BLOCK_SIZE);
+  // TILE_SIZE 是 constexpr，不会出现在参数列表，但通常作为宏定义在头文件中供 grid 计算使用
+  int grid_size = std::ceil(1.0 * n_elements / add_kernel_TILE_SIZE);
 
   // 5. 调用通用 Benchmark
   benchmark_kernel(RUN_COUNT, [&]() {

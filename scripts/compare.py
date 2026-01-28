@@ -54,12 +54,12 @@ def compare_performance(file1, file5, output_file):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: python compare.py <path_to_report_1.csv> <path_to_report_5.csv>")
-        print("Example: python scripts/compare.py performance_report_overall_1.csv performance_report_overall_5.csv")
+        print("Usage: python compare.py <path_to_report_1.csv> <path_to_report_2.csv>")
+        print("Example: python scripts/compare.py performance_report_overall_1.csv performance_report_overall_2.csv")
         sys.exit(1)
     
     file_1 = sys.argv[1]
-    file_5 = sys.argv[2]
+    file_2 = sys.argv[2]
     output_csv = 'compare.csv'
     
     compare_performance(file_1, file_5, output_csv)

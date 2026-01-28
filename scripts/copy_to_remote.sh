@@ -48,6 +48,9 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
   REMOTE_BIN_BASE="${REMOTE_BASE}/build-${BENCHMARK}/bin"
   LOCAL_BIN_DIR="${ROOT_DIR}/build-${BENCHMARK}/bin"
 
+  echo "Cleaning remote benchmark directory ${REMOTE_URL}:${REMOTE_BIN_BASE}"
+  ssh "${REMOTE_URL}" "rm -rf ${REMOTE_BIN_BASE}"
+
   for COMPILER in "${COMPILERS[@]}"; do
     # Path to the specific benchmark's compiled output for the current compiler.
     LOCAL_KERNEL_DIR="${LOCAL_BIN_DIR}/${COMPILER}/${BENCHMARK}"

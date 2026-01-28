@@ -18,6 +18,7 @@ source "${DIR}/global_config.sh"
 
 # Allow command-line arguments to override settings from global_config.sh
 DO_CLEAN=${DO_CLEAN:-$DEFAULT_DO_CLEAN}
+# export DEFAULT_DO_CLEAN="--no-clean"
 IFS=' ' read -r -a BENCHMARKS <<< "$BENCHMARKS_LIST"
 
 echo "--------------------------------------------------"
@@ -137,6 +138,7 @@ build_triton_benchmark() {
   echo "  -> Generating kernels from ${triton_kernel_file}..."
   
   ENABLE_AUTOTUNING=${tunning_arg} \
+  # TTTCIR_PATH="/home/zxl/research/Triton-RV/exper/compare-stripmining/add_kernel_RVV.tttcir" \
   KERNEL_LAUNCHER_INCLUDE_DIR=${kernel_launcher_include_dir} \
   KERNEL_AUX_FILE_DIR=${kernel_aux_file_dir} \
   "${PYTHON_EXECUTABLE}" "${triton_kernel_file}"
@@ -193,6 +195,7 @@ build_triton_benchmark() {
             lname=$(basename "${kernel_launcher}" .cpp)
             ${CXX} -I "${INCLUDE_DIR}" -I "${kernel_launcher_include_dir}" -c "${kernel_launcher}" \
                 -fopenmp -o "${current_obj_dir}/${lname}.o"
+            ${OBJDUMP} -d "${current_obj_dir}/${lname}.o" &> "${tunning_dir}/${lname}.s"
         done
 
         # C. Archive all generated object files into a static library.

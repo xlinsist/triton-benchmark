@@ -52,7 +52,7 @@ export THREADS_LIST="1"
 # export BENCHMARKS_LIST="matmul softmax layernorm correlation dropout resize rope warp"
 export BENCHMARKS_LIST="add"
 
-export MODE="Benchmark" # Or "Validation", "Test", etc.
+export MODE="Benchmark"
 
 
 # ==========================================

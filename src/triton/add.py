@@ -10,51 +10,44 @@ USE_GPU = False
 
 def get_add_kernel_autotune_config():
     configs = []
-    # 这里按“分块”思路：每个 program 处理一段长度为 BLOCK_SIZE 的向量
-    for BLOCK_SIZE in [1024, 4096]:
-        configs.append(triton.Config({"BLOCK_SIZE": BLOCK_SIZE, "TILE_SIZE": 16}))
+    # 这里按“分块”思路：每个 program 处理一段长度为 TILE_SIZE 的向量
+    for TILE_SIZE in [4, 8, 16, 32]:
+        configs.append(triton.Config({"TILE_SIZE": TILE_SIZE}))
     if os.getenv("ENABLE_AUTOTUNING") == "add_kernel":
         assert len(configs) > 1
         return configs
     # 默认给一个配置
-    return [triton.Config({"BLOCK_SIZE": 4096})]
+    return [triton.Config({"TILE_SIZE": 16})]
 
 
 @triton.autotune(
     configs=get_add_kernel_autotune_config(),
-    key=[],
+    key=['n_elements'],
 )
 @triton.jit
-def add_kernel(x_ptr,  # *Pointer* to first input vector.
-                     y_ptr,  # *Pointer* to second input vector.
-                     output_ptr,  # *Pointer* to output vector.
-                     n_elements,  # Size of the vector.
-                     stride_a, stride_b, stride_c,
-                     BLOCK_SIZE: tl.constexpr,  # Number of elements each program should process.
-                     TILE_SIZE: tl.constexpr,  # Number of elements each iteration should process.
-                     # NOTE `constexpr` so it can be used as a shape value.
-                     ):
+def add_kernel(x_ptr, y_ptr, output_ptr, 
+               n_elements, 
+               stride_x, stride_y, stride_out,
+               TILE_SIZE: tl.constexpr):
+    # 获取当前的 program ID
     pid = tl.program_id(axis=0)
-    block_start = pid * BLOCK_SIZE
-    for i in range(0, tl.cdiv(BLOCK_SIZE, TILE_SIZE)):
-        offsets = block_start + i * TILE_SIZE + tl.arange(0, TILE_SIZE)
 
-        # x = tl.load(x_ptr + offsets * stride_a)
-        # y = tl.load(y_ptr + offsets * stride_b)
-        # output = x + y
-        # tl.store(output_ptr + offsets * stride_c, output)
-
+    for tile_start in range(0, n_elements, TILE_SIZE):
+        offsets = tile_start + tl.arange(0, TILE_SIZE)
         mask = offsets < n_elements
-        x = tl.load(x_ptr + offsets * stride_a, mask=mask)
-        y = tl.load(y_ptr + offsets * stride_b, mask=mask)
-        output = x + y
-        tl.store(output_ptr + offsets * stride_c, output, mask=mask)
+        curr_x_ptr = x_ptr + offsets * stride_x
+        curr_y_ptr = y_ptr + offsets * stride_y
+        curr_out_ptr = output_ptr + offsets * stride_out
+        x = tl.load(curr_x_ptr, mask=mask, other=0.0)
+        y = tl.load(curr_y_ptr, mask=mask, other=0.0)
+        res = x + y
+        tl.store(curr_out_ptr, res, mask=mask)
 
 
 def add(x: torch.Tensor, y: torch.Tensor):
     output = torch.empty_like(x)
     n_elements = output.numel()
-    grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']), )
+    grid = lambda meta: (triton.cdiv(n_elements, meta['TILE_SIZE']), )
     add_kernel[grid](x, y, output, n_elements, x.stride(0), y.stride(0), output.stride(0))
     return output
 

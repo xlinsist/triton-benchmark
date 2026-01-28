@@ -73,8 +73,10 @@ def parse_performance_data(file_path, benchmark):
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_matmul_kernel_(\d+_\d+_\d+))?', method_info)
             elif benchmark == "resize":
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_resize_kernel_(\d+))?', method_info)
+            # elif benchmark == "add":
+            #     match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_add_kernel_(\d+_\d+))?', method_info)
             elif benchmark == "add":
-                match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_add_kernel_(\d+_\d+))?', method_info)
+                match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_add_kernel_(\d+))?', method_info)
             elif benchmark == "softmax":
                 match = re.match(r'(gcc|clang|triton)_(T\d+)(?:_softmax_kernel_(\d+_\d+))?', method_info)
             elif benchmark == "dropout":

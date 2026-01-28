@@ -48,7 +48,7 @@ def get_layer_norm_fwd_fused_autotune_config():
         triton.Config({'BLOCK_SIZE': 8}),
         triton.Config({'BLOCK_SIZE': 16}),
         triton.Config({'BLOCK_SIZE': 32}),
-        triton.Config({'BLOCK_SIZE': 64})
+        # triton.Config({'BLOCK_SIZE': 64})
     ]
     if(os.getenv("ENABLE_AUTOTUNING") == "_layer_norm_fwd_fused"):
       assert (len(configs) > 1), "Autotuning config size need be larger than 1"
