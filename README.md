@@ -1,5 +1,7 @@
 # Triton-RV
 
+## NOTE: This repo is now archived. For the latest updates, please see [RuyiAI-Stack/triton-riscv](https://github.com/RuyiAI-Stack/triton-riscv).
+
 ## Overview
 
 This repo conducts a comparative analysis of runtime auto-tuning in Triton-CPU across multi-core x86 and RISC-V architectures, benchmarking it against compiler-based auto-tuning approaches to systematically evaluate the impact of various tuning parameters.
